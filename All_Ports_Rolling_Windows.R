@@ -12,10 +12,11 @@
 # Using PT assignment data to test portfolio construction and rolling windows
 
 ### Functions for: ####
-# SR Maximizing Port
-# Constant Mix Port
-# HRP Port
-# Equally Weighted Port
+# 1. Equally Weighted Port
+# 2. SR Maximizing Port
+# 3. Buy-Hold
+# 4. HRP Port
+# 5. Constant Mix Port
 
 ### Rolling Windows ###
 # Window of length of half of data (rounded if odd number)
@@ -174,7 +175,8 @@ test_HRP <- HRP_Fn(corr = corr_HRP, cov = covar_HRP)
 #######################################################
 # ************** 5. Constant Mix **************
 
-## Rebalance to same initail month 1 weights each month moving forward
+## Rebalance to same initial month 1 weights each month moving forward
+
 
 ###############################################################################
 ################## Rolling Window (length = n/2) #################
@@ -199,17 +201,27 @@ Shift_tsPRet        <-  tsGRet[,1]*0 # store Return that we would get if we used
 names(Shift_tsPRet) <- " Shift SR "
 
 # 3. Buy-Hold with SR (uses the first window 1:74)
-m.1     <- colMeans(tsGRet[1 :Window,], na.rm = T)
-covar.1 <- var(tsGRet[1:Window,], na.rm = T)
-
-BHWts <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
-Shift_tsBHRet <- Shift_tsPRet # BH Returns per rolled month
-names(Shift_tsBHRet) <- "Shift Buy-Hold"
+# m.1     <- colMeans(tsGRet[1 :Window,], na.rm = T)
+# covar.1 <- var(tsGRet[1:Window,], na.rm = T)
+# 
+# BHWts <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
+# Shift_tsBHRet <- Shift_tsPRet # BH Returns per rolled month
+# names(Shift_tsBHRet) <- "Shift Buy-Hold"
+# # # Step forwards by a month using loop
+# tot <- dim(tsGRet)
 
 #4. HRP storage
 Shift_HRP_Wts         <- tsGRet* 0 # weight per asset at each time step
 Shift_HRP_PRet        <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
 names(Shift_HRP_PRet) <- " Grow HRP "
+
+#5. Constant Mix Port
+m.1     <- colMeans(tsGRet[1 :Window,], na.rm = T)
+covar.1 <- var(tsGRet[1:Window,], na.rm = T)
+
+CMWts <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
+Shift_tsCMRet <- Shift_tsPRet # CM Returns per rolled month
+names(Shift_tsCMRet) <- "Shift Constant Mix"
 
 # # Step forwards by a month using loop
 tot <- dim(tsGRet)
@@ -228,10 +240,13 @@ for (i in Window:(tot[1]-1)){
         EWts <- rep(1/N[2], length.out = N[2])
         #2. SR
         Shift_tsWts[i,] <- SR.fn(m = m.i, covar = covar.i, RFR = RFR)
-        #3. Buy-Hold
-        # Weights calculated outside of for loop
+        # 3. BH 
+        
         #4. HRP
         Shift_HRP_Wts[i,] <- HRP_Fn(corr = corr.i, cov = covar.i)
+        
+        #5. Constant Mix
+        # Weights calculated outside of for loop
         
         #### Calc + store realised returns, wts * actual next mnths returns
         #1. Equally weighted realised returns
@@ -239,9 +254,11 @@ for (i in Window:(tot[1]-1)){
         #2 SR realised returns
         Shift_tsPRet[i] <- Shift_tsWts[i,] %*% t(tsGRet[i,])
         #3. BH realised returns
-        Shift_tsBHRet[i] <- BHWts %*% t(tsGRet[i,])
+        #Shift_tsBHRet[i] <- BHWts %*% t(tsGRet[i,])
         #4. HRP realised returns
         Shift_HRP_PRet [i] <- Shift_HRP_Wts[i,] %*% t(tsGRet[i,])
+        #5. CM realised returns
+        Shift_tsCMRet[i] <- CMWts %*% t(tsGRet[i,])
 }
 
 #######################################################
@@ -256,18 +273,26 @@ Grow_tsWts         <- tsGRet* 0 # weight per asset at each time step
 Grow_tsPRet        <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
 names(Grow_tsPRet) <- " Grow SR "
 
-#3. Buy-Hold with SR
-m.1     <- colMeans(tsGRet[(1) :Window,], na.rm = T)
-covar.1 <- var(tsGRet[(1) :Window,], na.rm = T)
-
-BHWts               <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
-Grow_tsBHRet        <- Grow_tsPRet
-names(Grow_tsBHRet) <- "Grow Buy-Hold"
+# #3. Buy-Hold with SR
+# m.1     <- colMeans(tsGRet[(1) :Window,], na.rm = T)
+# covar.1 <- var(tsGRet[(1) :Window,], na.rm = T)
+# 
+# BHWts               <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
+# Grow_tsBHRet        <- Grow_tsPRet
+# names(Grow_tsBHRet) <- "Grow Buy-Hold"
 
 #4. HRP storage
 Grow_HRP_Wts         <- tsGRet* 0 # weight per asset at each time step
 Grow_HRP_PRet        <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
 names(Grow_HRP_PRet) <- " Grow HRP "
+
+#5. Constant Mix (SR)
+m.1     <- colMeans(tsGRet[(1) :Window,], na.rm = T)
+covar.1 <- var(tsGRet[(1) :Window,], na.rm = T)
+
+CMWts               <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
+Grow_tsCMRet        <- Grow_tsPRet
+names(Grow_tsCMRet) <- "Grow Constant-Mix"
 
 
 for (i in Window:(nrow(tsGRet)-1)){
@@ -284,9 +309,11 @@ for (i in Window:(nrow(tsGRet)-1)){
         #2. SR
         Grow_tsWts[i,] <- SR.fn(m = m.i, covar = covar.i, RFR = RFR)
         #3. Buy-Hold
-        # Weights calculated outside of for loop
+        
         #4. HRP
         Grow_HRP_Wts[i,] <- HRP_Fn(corr = corr.i, cov = covar.i)
+        #5. Constant-Mix
+        # Weights calculated outside of for loop
         
         #### Calc + store realised returns, wts * actual next mnths returns
         
@@ -295,10 +322,11 @@ for (i in Window:(nrow(tsGRet)-1)){
         #2. SR realised returns
         Grow_tsPRet[i] <- Grow_tsWts[i,] %*% t(tsGRet[i,])
         #3. BH realised returns
-        Grow_tsBHRet[i] <- BHWts %*% t(tsGRet[i,])
+        #Grow_tsBHRet[i] <- BHWts %*% t(tsGRet[i,])
         #4. HRP realised returns
         Grow_HRP_PRet [i] <- Grow_HRP_Wts[i,] %*% t(tsGRet[i,])
-        
+        #5. CM realised returns
+        Grow_tsCMRet[i] <- CMWts %*% t(tsGRet[i,])
         
 }
 
@@ -354,7 +382,7 @@ write_xlsx(Grow_tsPRet_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/Gr
 
 #Compute the wealth index
 S_tsIndx <- merge(colCumprods(exp(Shift_tsERet)),colCumprods(exp(Shift_tsPRet)))
-S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsBHRet)))
+S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsCMRet)))
 S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_HRP_PRet)))
 # tsIndx <-colCumprods(exp(tsPRet))
 # remove the padded zero from the first half
@@ -370,7 +398,7 @@ grid()
 # title
 title(main = "Shifting Window Equity Curve")
 # legend
-# EQW, SR, BH, HRP
+# EQW, SR, CM, HRP
 legend("topleft",names(S_tsIndx),col = c("orange","black","blue","green"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid'), bty = "n")
 
 #######################################################
@@ -379,7 +407,7 @@ legend("topleft",names(S_tsIndx),col = c("orange","black","blue","green"), lwd =
 
 #Compute the wealth index
 G_tsIndx1 <- merge(colCumprods(exp(Grow_tsERet)),colCumprods(exp(Grow_tsPRet)))
-G_tsIndx <- merge(G_tsIndx1,colCumprods(exp(Grow_tsBHRet)))
+G_tsIndx <- merge(G_tsIndx1,colCumprods(exp(Grow_tsCMRet)))
 G_tsIndx <- merge(G_tsIndx,colCumprods(exp(Grow_HRP_PRet)))
 # tsIndx <-colCumprods(exp(tsPRet))
 # remove the padded zero from the first half
@@ -395,7 +423,7 @@ grid()
 # title
 title(main = "Growing Window Equity Curve")
 # legend
-# EQW, SR, BH, HRP
+# EQW, SR, CM, HRP
 legend("topleft",names(G_tsIndx),col = c("orange","black","blue","green"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid'),bty = "n")
 
 ############################################################################### 
@@ -403,7 +431,7 @@ legend("topleft",names(G_tsIndx),col = c("orange","black","blue","green"), lwd =
 # DO TO list:
 
 ### NINA
-# 1. Need to change BH to constant mix portfolio 
+# 1. Need to change BH to constant mix portfolio (DONE)
 # 2. Add proper BH port
 # 3. Compute and plot turnovers
 
