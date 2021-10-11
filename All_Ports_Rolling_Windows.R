@@ -161,7 +161,7 @@ SR.wts
 
 # Run optimization in month "1" and use these weights every month
 
-#BHwts <- SR.fn()
+BHwts <- SR.fn()
 
 #######################################################
 # ************** 4. HRP **************
@@ -201,14 +201,19 @@ Shift_tsPRet        <-  tsGRet[,1]*0 # store Return that we would get if we used
 names(Shift_tsPRet) <- " Shift SR "
 
 # 3. Buy-Hold with SR (uses the first window 1:74)
-# m.1     <- colMeans(tsGRet[1 :Window,], na.rm = T)
-# covar.1 <- var(tsGRet[1:Window,], na.rm = T)
-# 
-# BHWts <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
-# Shift_tsBHRet <- Shift_tsPRet # BH Returns per rolled month
-# names(Shift_tsBHRet) <- "Shift Buy-Hold"
-# # # Step forwards by a month using loop
-# tot <- dim(tsGRet)
+m.1     <- colMeans(tsGRet[1 :Window,], na.rm = T)
+covar.1 <- var(tsGRet[1:Window,], na.rm = T)
+ 
+BHWts <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
+# Shift weights
+Shift_tsBH_Wts         <- tsGRet* 0 
+# Insert initial optimized weights
+Shift_tsBH_Wts[Window,] <- BHWts
+# Realised Ret per asset:
+asset.retBH <- tsGRet* 0   # Storage
+Shift_tsBHRet <- Shift_tsPRet # BH Portfolio total Returns per rolled month
+names(Shift_tsBHRet) <- "Shift Buy-Hold"
+ 
 
 #4. HRP storage
 Shift_HRP_Wts         <- tsGRet* 0 # weight per asset at each time step
@@ -241,6 +246,8 @@ for (i in Window:(tot[1]-1)){
         #2. SR
         Shift_tsWts[i,] <- SR.fn(m = m.i, covar = covar.i, RFR = RFR)
         # 3. BH 
+        # Insert initial optimized weights using SR max
+        Shift_tsBH_Wts[Window,] <- BHWts
         
         #4. HRP
         Shift_HRP_Wts[i,] <- HRP_Fn(corr = corr.i, cov = covar.i)
@@ -249,16 +256,28 @@ for (i in Window:(tot[1]-1)){
         # Weights calculated outside of for loop
         
         #### Calc + store realised returns, wts * actual next mnths returns
+        
         #1. Equally weighted realised returns
         Shift_tsERet[i] <- EWts %*% t(tsGRet[i,])
+        
         #2 SR realised returns
         Shift_tsPRet[i] <- Shift_tsWts[i,] %*% t(tsGRet[i,])
+        
         #3. BH realised returns
-        #Shift_tsBHRet[i] <- BHWts %*% t(tsGRet[i,])
+        # Calculate element wise returns per asset
+        asset.retBH[i,] <- Shift_tsBH_Wts[i,]*tsGRet[i,]
+        ## Realised Port returns (Sum across all assets) 
+        Shift_tsBHRet[i] <- Shift_tsBH_Wts[i,] %*% t(tsGRet[i,])
+        
         #4. HRP realised returns
         Shift_HRP_PRet [i] <- Shift_HRP_Wts[i,] %*% t(tsGRet[i,])
+        
         #5. CM realised returns
         Shift_tsCMRet[i] <- CMWts %*% t(tsGRet[i,])
+        
+        #######  Update BH Weights ######
+        # Calc new weights as function of previous month realised ret
+        Shift_tsBH_Wts[(i+1),] <- asset.retBH[i,]/Shift_tsBHRet[i]
 }
 
 #######################################################
@@ -273,13 +292,14 @@ Grow_tsWts         <- tsGRet* 0 # weight per asset at each time step
 Grow_tsPRet        <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
 names(Grow_tsPRet) <- " Grow SR "
 
-# #3. Buy-Hold with SR
-# m.1     <- colMeans(tsGRet[(1) :Window,], na.rm = T)
-# covar.1 <- var(tsGRet[(1) :Window,], na.rm = T)
-# 
-# BHWts               <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
-# Grow_tsBHRet        <- Grow_tsPRet
-# names(Grow_tsBHRet) <- "Grow Buy-Hold"
+#3. Buy-Hold with SR
+m.1     <- colMeans(tsGRet[(1) :Window,], na.rm = T)
+covar.1 <- var(tsGRet[(1) :Window,], na.rm = T)
+ 
+# Initial Month 1 wghts
+BHWts               <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
+Grow_tsBHRet        <- Grow_tsPRet
+names(Grow_tsBHRet) <- "Grow Buy-Hold"
 
 #4. HRP storage
 Grow_HRP_Wts         <- tsGRet* 0 # weight per asset at each time step
