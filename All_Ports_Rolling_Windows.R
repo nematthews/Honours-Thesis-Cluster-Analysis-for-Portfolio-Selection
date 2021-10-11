@@ -433,12 +433,10 @@ legend("topleft",names(G_tsIndx),col = c("orange","black","blue","green"), lwd =
 ### NINA
 # 0. link git (issues)
 # 1. Need to change BH to constant mix portfolio (DONE)
-# 2. Add proper BH port
+# 2. Add proper BH port 
 # 3. Compute and plot turnovers
 
 ### SIPHE
 # 1. Geometric Returns
 # 2. Winzorise
 # 3. Covar
-
-## Test to remove and revert 
