@@ -431,7 +431,8 @@ legend("topleft",names(G_tsIndx),col = c("orange","black","blue","green"), lwd =
 # DO TO list:
 
 ### NINA
-# 1. Need to change BH to constant mix portfolio 
+# 0. link git (issues)
+# 1. Need to change BH to constant mix portfolio (DONE)
 # 2. Add proper BH port
 # 3. Compute and plot turnovers
 
