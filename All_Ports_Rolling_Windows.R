@@ -400,4 +400,14 @@ legend("topleft",names(G_tsIndx),col = c("orange","black","blue","green"), lwd =
 
 ############################################################################### 
 
+# DO TO list:
 
+### NINA
+# 1. Need to change BH to constant mix portfolio 
+# 2. Add proper BH port
+# 3. Compute and plot turnovers
+
+### SIPHE
+# 1. Geometric Returns
+# 2. Winzorise
+# 3. Covar
