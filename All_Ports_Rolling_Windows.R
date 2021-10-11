@@ -440,3 +440,5 @@ legend("topleft",names(G_tsIndx),col = c("orange","black","blue","green"), lwd =
 # 1. Geometric Returns
 # 2. Winzorise
 # 3. Covar
+
+## Test to remove and revert 
