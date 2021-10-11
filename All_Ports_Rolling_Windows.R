@@ -402,8 +402,9 @@ write_xlsx(Grow_tsPRet_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/Gr
 
 #Compute the wealth index
 S_tsIndx <- merge(colCumprods(exp(Shift_tsERet)),colCumprods(exp(Shift_tsPRet)))
-S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsCMRet)))
+S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsBHRet)))
 S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_HRP_PRet)))
+S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsCMRet)))
 # tsIndx <-colCumprods(exp(tsPRet))
 # remove the padded zero from the first half
 S_tsIndx <- S_tsIndx[Window:i,]
@@ -412,14 +413,14 @@ head(S_tsIndx)
 
 ## Visualise the Equity Curves
 # plot the merge indices
-plot(S_tsIndx,plot.type = "s", col = c("orange", "black", "blue", "green"))
+plot(S_tsIndx,plot.type = "s", col = c("orange", "black", "blue", "green", "purple"))
 # turn on the grid
 grid()
 # title
 title(main = "Shifting Window Equity Curve")
 # legend
-# EQW, SR, CM, HRP
-legend("topleft",names(S_tsIndx),col = c("orange","black","blue","green"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid'), bty = "n")
+# EQW, SR, BH, HRP, CM
+legend("topleft",names(S_tsIndx),col = c("orange","black","blue","green", "purple"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid', 'solid'), bty = "n")
 
 #######################################################
 # ************** Growing Window PLOT **************
@@ -460,3 +461,6 @@ legend("topleft",names(G_tsIndx),col = c("orange","black","blue","green"), lwd =
 # 1. Geometric Returns
 # 2. Winzorise
 # 3. Covar
+
+
+### Relative mix changes over time depending on how the real asset classes in relative perform
