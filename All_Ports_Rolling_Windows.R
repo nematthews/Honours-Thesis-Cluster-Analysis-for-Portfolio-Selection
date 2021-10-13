@@ -406,7 +406,7 @@ S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsBHRet)))
 S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_HRP_PRet)))
 S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsCMRet)))
 # tsIndx <-colCumprods(exp(tsPRet))
-# remove the padded zero from the first half
+# remove zeros from the first half
 S_tsIndx <- S_tsIndx[Window:i,]
 # print header
 head(S_tsIndx)
