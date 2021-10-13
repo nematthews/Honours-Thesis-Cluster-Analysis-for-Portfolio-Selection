@@ -28,7 +28,7 @@
 #############################################################################
 
 rm(list=ls())
-library("writexl")
+#library("writexl") # uncomment to write certain results to excel docs
 library(zoo)
 library(xts)
 library(timeSeries) 
@@ -95,10 +95,6 @@ text(s, m,labels=names(m), cex= 1, pos = 4)
 ## Optimization Fns to be called in rolling windows #################
 ###############################################################################
 
-# Fn that takes in 74 months of data and gets weights for the 75 month.
-# Use the actualized return in the data in month 75
-
-
 #######################################################
 # ************** 1. Equally Weighted **************
 
@@ -106,9 +102,6 @@ text(s, m,labels=names(m), cex= 1, pos = 4)
 # ************** 2. SR Maximizing MV **************
 
 RFR  <- colMeans(tsRRF) # Risk Free Rate (STEFI)
-#Mkt.R <- colMeans(tsMKT, na.rm=TRUE) # "Market" port E[R]
-#Mkt.V <- colStdevs(tsMKT, na.rm=TRUE) # "Market" port Var
-
 
 SR.fn <- function(m, covar, RFR = RFR){
         
@@ -139,7 +132,6 @@ SR.fn <- function(m, covar, RFR = RFR){
         # Fully Invested + Return Target
         heq0 <- function(x) {return(x %*% Ones.vec - 1)} # fully invested
         
-        
         # Use SQP to solve for the tangency portfolio  
         opt <- slsqp(Wts0, fn = fn0, gr = NULL, # target returns
                      lower = rep(0,length(Wts0)), # no short-selling
@@ -158,9 +150,7 @@ SR.wts
 
 #######################################################
 # ************** 3. Buy-Hold **************
-
-# Run optimization in month "1" and use these weights every month
-
+# Optimize for first month's weights and hold portfolio over full period. No active rebalancing
 
 #######################################################
 # ************** 4. HRP **************
@@ -176,7 +166,6 @@ test_HRP <- HRP_Fn(corr = corr_HRP, cov = covar_HRP)
 
 ## Rebalance to same initial month 1 weights each month moving forward
 
-
 ###############################################################################
 ################## Rolling Window (length = n/2) #################
 ###############################################################################
@@ -186,51 +175,50 @@ test_HRP <- HRP_Fn(corr = corr_HRP, cov = covar_HRP)
 ###### initialize storage and inputs:
 Window  <- round(nrow(tsGRet)/2) # N/2, using half data as window (74)
 N <- dim(tsGRet)
-
 #######################################################
 # ************** Shifting Window **************
 
 #1. Equally Weighted
 Shift_tsERet        <- tsGRet[,1]*0
-names(Shift_tsERet) <- " Shift Equally Wt"
+names(Shift_tsERet) <- "Equally Weighted"
 
 # 2. SR storage
 Shift_tsWts         <- tsGRet* 0 # weight per asset at each time step
 Shift_tsPRet        <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
-names(Shift_tsPRet) <- " Shift SR "
+names(Shift_tsPRet) <- "SR Maximizing"
 
 # 3. Buy-Hold with SR (uses the first window 1:74)
 m.1     <- colMeans(tsGRet[1 :Window,], na.rm = T)
 covar.1 <- var(tsGRet[1:Window,], na.rm = T)
- 
+# Mnth 1 initial weights
 BHWts <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
-# Shift window weights beginning of months
-Shift_tsBH_Wts0        <- tsGRet* 0  # for i-th month
-# Shift window weights end of months
-Shift_tsBH_WtsEnd        <- tsGRet* 0 # for i-th month
+# Shift-window weights beginning of months
+Shift_tsBH_Wts0    <- tsGRet* 0  # for i-th month
+# Shift-window weights end of months
+Shift_tsBH_WtsEnd   <- tsGRet* 0 # for i-th month
 # Insert initial optimized weights
 Shift_tsBH_Wts0[Window,] <- BHWts
-# BH Portfolio total Returns per rolled month
+# BH Portfolio totalrealised Returns per rolled month
 Shift_tsBHRet <- Shift_tsPRet 
-names(Shift_tsBHRet) <- "Shift Buy-Hold"
+names(Shift_tsBHRet) <- "Buy-Hold"
 
 #4. HRP storage
-Shift_HRP_Wts         <- tsGRet* 0 # weight per asset at each time step
-Shift_HRP_PRet        <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
-names(Shift_HRP_PRet) <- " Grow HRP "
+Shift_HRP_Wts   <- tsGRet* 0 # weight per asset at each time step
+Shift_HRP_PRet  <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
+names(Shift_HRP_PRet) <- "HRP "
 
 #5. Constant Mix Port
 m.1     <- colMeans(tsGRet[1 :Window,], na.rm = T)
 covar.1 <- var(tsGRet[1:Window,], na.rm = T)
-
+# Initialise weights
 CMWts <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
 Shift_tsCMRet <- Shift_tsPRet # CM Returns per rolled month
-names(Shift_tsCMRet) <- "Shift Constant Mix"
+names(Shift_tsCMRet) <- "Constant Mix"
 
-# # Step forwards by a month using loop
+# Step forwards by a month using loop
 tot <- dim(tsGRet)
 
-# loop deals with a single month at a time that is the month after the window
+# loop deals with a single month at a time starting with month 74 (Window)
 for (i in Window:(tot[1]-1)){
         
         #### need new stats of new window each time
@@ -242,8 +230,10 @@ for (i in Window:(tot[1]-1)){
         #### Call opt using above inputs, store returned wts
         #1.  Equal
         EWts <- rep(1/N[2], length.out = N[2])
+        
         #2. SR
         Shift_tsWts[i,] <- SR.fn(m = m.i, covar = covar.i, RFR = RFR)
+        
         # 3. BH 
         # Insert initial optimized weights using SR max
         Shift_tsBH_Wts0[Window,] <- BHWts
@@ -254,7 +244,7 @@ for (i in Window:(tot[1]-1)){
         #5. Constant Mix
         # Weights calculated outside of for loop
         
-        #### Calc + store realised returns, wts * actual next mnths returns
+        #### Calc + store realised returns, wts * actual market returns
         
         #1. Equally weighted realised returns
         Shift_tsERet[i] <- EWts %*% t(tsGRet[i,])
@@ -275,7 +265,7 @@ for (i in Window:(tot[1]-1)){
         #######  Update BH Weights ######
         # Calc month end weight
         Shift_tsBH_WtsEnd[i,] <- (tsGRet[i,]*Shift_tsBH_Wts0[i,])+Shift_tsBH_Wts0[i,]
-        # Calc month i+1 weights
+        # Calc month (i+1) weights
         Shift_tsBH_Wts0[(i+1),] <- Shift_tsBH_WtsEnd[i,]/sum(Shift_tsBH_WtsEnd[i,])
 }
 
@@ -284,26 +274,28 @@ for (i in Window:(tot[1]-1)){
 
 #1. Equally Weighted
 Grow_tsERet        <-   tsGRet[,1]*0
-names(Grow_tsERet) <- " Grow Equally Wt"
+names(Grow_tsERet) <- "Equally Weighted"
 
 #2. SR storage
 Grow_tsWts         <- tsGRet* 0 # weight per asset at each time step
 Grow_tsPRet        <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
-names(Grow_tsPRet) <- " Grow SR "
+names(Grow_tsPRet) <- "SR Maximizing"
 
-#3. Buy-Hold with SR
-m.1     <- colMeans(tsGRet[(1) :Window,], na.rm = T)
-covar.1 <- var(tsGRet[(1) :Window,], na.rm = T)
- 
-# Initial Month 1 wghts
-BHWts               <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
-Grow_tsBHRet        <- Grow_tsPRet
-names(Grow_tsBHRet) <- "Grow Buy-Hold"
+# 3. Buy-Hold with SR (uses the first window 1:74)
+# Grow window weights beginning of months
+Grow_tsBH_Wts0        <- tsGRet* 0  # for i-th month
+# Grow window weights end of months
+Grow_tsBH_WtsEnd        <- tsGRet* 0 # for i-th month
+# Insert initial optimized weights
+Grow_tsBH_Wts0[Window,] <- BHWts
+# BH Portfolio total Returns per rolled month
+Grow_tsBHRet <- Grow_tsPRet 
+names(Grow_tsBHRet) <- "Buy-Hold"
 
 #4. HRP storage
 Grow_HRP_Wts         <- tsGRet* 0 # weight per asset at each time step
 Grow_HRP_PRet        <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
-names(Grow_HRP_PRet) <- " Grow HRP "
+names(Grow_HRP_PRet) <- "HRP "
 
 #5. Constant Mix (SR)
 m.1     <- colMeans(tsGRet[(1) :Window,], na.rm = T)
@@ -311,12 +303,12 @@ covar.1 <- var(tsGRet[(1) :Window,], na.rm = T)
 
 CMWts               <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
 Grow_tsCMRet        <- Grow_tsPRet
-names(Grow_tsCMRet) <- "Grow Constant-Mix"
+names(Grow_tsCMRet) <- "Constant-Mix"
 
 
 for (i in Window:(nrow(tsGRet)-1)){
-        #### need new stats of new window each time
         
+        #### need new stats of new window each time
         # Growing Window
         m.i <- colMeans(tsGRet[1:i,], na.rm=TRUE)
         covar.i <- var(tsGRet[1:i,], na.rm=TRUE)
@@ -325,27 +317,38 @@ for (i in Window:(nrow(tsGRet)-1)){
         #### Call opt using above inputs, store returned wts
         #1. Equal
         EWts <- rep(1/N[2], length.out = N[2])
+        
         #2. SR
         Grow_tsWts[i,] <- SR.fn(m = m.i, covar = covar.i, RFR = RFR)
-        #3. Buy-Hold
+        
+        # 3. BH: Initial weights calc outside
+        # Insert initial optimized weights
+        Grow_tsBH_Wts0[Window,] <- BHWts
         
         #4. HRP
         Grow_HRP_Wts[i,] <- HRP_Fn(corr = corr.i, cov = covar.i)
+        
         #5. Constant-Mix
         # Weights calculated outside of for loop
         
         #### Calc + store realised returns, wts * actual next mnths returns
-        
         #1 Equally weighted realised returns
         Grow_tsERet[i] <- EWts %*% t(tsGRet[i,])
         #2. SR realised returns
         Grow_tsPRet[i] <- Grow_tsWts[i,] %*% t(tsGRet[i,])
         #3. BH realised returns
-        #Grow_tsBHRet[i] <- BHWts %*% t(tsGRet[i,])
+        ## Realised Port returns (Sum across all assets) 
+        Grow_tsBHRet[i] <- Grow_tsBH_Wts0[i,] %*% t(tsGRet[i,])
         #4. HRP realised returns
         Grow_HRP_PRet [i] <- Grow_HRP_Wts[i,] %*% t(tsGRet[i,])
         #5. CM realised returns
         Grow_tsCMRet[i] <- CMWts %*% t(tsGRet[i,])
+        
+        # Calc month end weight
+        Grow_tsBH_WtsEnd[i,] <- (tsGRet[i,]*Grow_tsBH_Wts0[i,])+Grow_tsBH_Wts0[i,]
+        # Calc month i+1 weights
+        Grow_tsBH_Wts0[(i+1),] <- Grow_tsBH_WtsEnd[i,]/sum(Grow_tsBH_WtsEnd[i,])
+        
         
 }
 
@@ -355,7 +358,10 @@ for (i in Window:(nrow(tsGRet)-1)){
 
 ### Export GReturns from 4 months post window
 GRet_4 <- as.data.frame(tsGRet[Window:(Window+4),])
-write_xlsx(GRet_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/GRet_4.xlsx")
+
+# Insert desired file path below:
+# write_xlsx(GRet_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/GRet_4.xlsx")
+
 
 #######################################################
 # ************** Shift Window **************
@@ -370,8 +376,9 @@ Shift_tsWts_4 <- as.data.frame(clean_Shift_tsWts[1:4,])
 Shift_tsPRet_4 <- as.data.frame(clean_Shift_tsPRet[1:4,])
 
 ### Export Data for checking: Shifting Window 
-write_xlsx(Shift_tsWts_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/Shift_tsWts_4.xlsx")
-write_xlsx(Shift_tsPRet_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/Shift_tsPRet_4.xlsx")
+# Insert desired file path below:
+#write_xlsx(Shift_tsWts_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/Shift_tsWts_4.xlsx")
+#write_xlsx(Shift_tsPRet_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/Shift_tsPRet_4.xlsx")
 
 #######################################################
 # ************** Growing Window **************
@@ -387,8 +394,9 @@ Grow_tsWts_4 <- as.data.frame(clean_Grow_tsWts[1:4,])
 Grow_tsPRet_4 <- as.data.frame(clean_Grow_tsPRet[1:4,])
 
 ### Export Data for checking: Growing Window
-write_xlsx(Grow_tsWts_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/Grow_tsWts_4.xlsx")
-write_xlsx(Grow_tsPRet_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/Grow_tsPRet_4.xlsx")
+# Insert desired file path below:
+#write_xlsx(Grow_tsWts_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/Grow_tsWts_4.xlsx")
+#write_xlsx(Grow_tsPRet_4,"/Users/Ninamatthews/Desktop/THESIS/Excel Data Check/Grow_tsPRet_4.xlsx")
 
 ###############################################################################
 ########## Plot Equity Curves using Wealth Index  #################
@@ -404,7 +412,6 @@ S_tsIndx <- merge(colCumprods(exp(Shift_tsERet)),colCumprods(exp(Shift_tsPRet)))
 S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsBHRet)))
 S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_HRP_PRet)))
 S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsCMRet)))
-# tsIndx <-colCumprods(exp(tsPRet))
 # remove zeros from the first half
 S_tsIndx <- S_tsIndx[Window:i,]
 # print header
@@ -426,9 +433,10 @@ legend("topleft",names(S_tsIndx),col = c("orange","black","blue","green", "purpl
 
 
 #Compute the wealth index
-G_tsIndx1 <- merge(colCumprods(exp(Grow_tsERet)),colCumprods(exp(Grow_tsPRet)))
-G_tsIndx <- merge(G_tsIndx1,colCumprods(exp(Grow_tsCMRet)))
+G_tsIndx <- merge(colCumprods(exp(Grow_tsERet)),colCumprods(exp(Grow_tsPRet)))
+G_tsIndx <- merge(G_tsIndx,colCumprods(exp(Grow_tsBHRet)))
 G_tsIndx <- merge(G_tsIndx,colCumprods(exp(Grow_HRP_PRet)))
+G_tsIndx <- merge(G_tsIndx,colCumprods(exp(Grow_tsCMRet)))
 # tsIndx <-colCumprods(exp(tsPRet))
 # remove the padded zero from the first half
 G_tsIndx <- G_tsIndx[Window:i,]
@@ -437,14 +445,14 @@ head(G_tsIndx)
 
 ## Visualise the Equity Curves
 # plot the merge indices
-plot(G_tsIndx,plot.type = "s", col = c("orange", "black", "blue", "green"))
+plot(G_tsIndx,plot.type = "s", col = c("orange", "black", "blue", "green", "purple"))
 # turn on the grid
 grid()
 # title
 title(main = "Growing Window Equity Curve")
 # legend
 # EQW, SR, CM, HRP
-legend("topleft",names(G_tsIndx),col = c("orange","black","blue","green"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid'),bty = "n")
+legend("topleft",names(G_tsIndx),col = c("orange","black","blue","green","purple"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid','solid'),bty = "n")
 
 ############################################################################### 
 
