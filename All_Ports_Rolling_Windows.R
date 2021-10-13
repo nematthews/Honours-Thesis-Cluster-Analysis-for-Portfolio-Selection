@@ -161,7 +161,6 @@ SR.wts
 
 # Run optimization in month "1" and use these weights every month
 
-BHwts <- SR.fn()
 
 #######################################################
 # ************** 4. HRP **************
@@ -205,15 +204,15 @@ m.1     <- colMeans(tsGRet[1 :Window,], na.rm = T)
 covar.1 <- var(tsGRet[1:Window,], na.rm = T)
  
 BHWts <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
-# Shift weights
-Shift_tsBH_Wts         <- tsGRet* 0 
+# Shift window weights beginning of months
+Shift_tsBH_Wts0        <- tsGRet* 0  # for i-th month
+# Shift window weights end of months
+Shift_tsBH_WtsEnd        <- tsGRet* 0 # for i-th month
 # Insert initial optimized weights
-Shift_tsBH_Wts[Window,] <- BHWts
-# Realised Ret per asset:
-asset.retBH <- tsGRet* 0   # Storage
-Shift_tsBHRet <- Shift_tsPRet # BH Portfolio total Returns per rolled month
+Shift_tsBH_Wts0[Window,] <- BHWts
+# BH Portfolio total Returns per rolled month
+Shift_tsBHRet <- Shift_tsPRet 
 names(Shift_tsBHRet) <- "Shift Buy-Hold"
- 
 
 #4. HRP storage
 Shift_HRP_Wts         <- tsGRet* 0 # weight per asset at each time step
@@ -247,7 +246,7 @@ for (i in Window:(tot[1]-1)){
         Shift_tsWts[i,] <- SR.fn(m = m.i, covar = covar.i, RFR = RFR)
         # 3. BH 
         # Insert initial optimized weights using SR max
-        Shift_tsBH_Wts[Window,] <- BHWts
+        Shift_tsBH_Wts0[Window,] <- BHWts
         
         #4. HRP
         Shift_HRP_Wts[i,] <- HRP_Fn(corr = corr.i, cov = covar.i)
@@ -264,10 +263,8 @@ for (i in Window:(tot[1]-1)){
         Shift_tsPRet[i] <- Shift_tsWts[i,] %*% t(tsGRet[i,])
         
         #3. BH realised returns
-        # Calculate element wise returns per asset
-        asset.retBH[i,] <- Shift_tsBH_Wts[i,]*tsGRet[i,]
         ## Realised Port returns (Sum across all assets) 
-        Shift_tsBHRet[i] <- Shift_tsBH_Wts[i,] %*% t(tsGRet[i,])
+        Shift_tsBHRet[i] <- Shift_tsBH_Wts0[i,] %*% t(tsGRet[i,])
         
         #4. HRP realised returns
         Shift_HRP_PRet [i] <- Shift_HRP_Wts[i,] %*% t(tsGRet[i,])
@@ -276,8 +273,10 @@ for (i in Window:(tot[1]-1)){
         Shift_tsCMRet[i] <- CMWts %*% t(tsGRet[i,])
         
         #######  Update BH Weights ######
-        # Calc new weights as function of previous month realised ret
-        Shift_tsBH_Wts[(i+1),] <- asset.retBH[i,]/Shift_tsBHRet[i]
+        # Calc month end weight
+        Shift_tsBH_WtsEnd[i,] <- (tsGRet[i,]*Shift_tsBH_Wts0[i,])+Shift_tsBH_Wts0[i,]
+        # Calc month i+1 weights
+        Shift_tsBH_Wts0[(i+1),] <- Shift_tsBH_WtsEnd[i,]/sum(Shift_tsBH_WtsEnd[i,])
 }
 
 #######################################################
