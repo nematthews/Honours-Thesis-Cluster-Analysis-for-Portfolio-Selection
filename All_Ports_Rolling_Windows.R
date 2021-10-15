@@ -74,6 +74,9 @@ plot(tsGRet,plot.type = c("single"),
      ylab = "Returns",
      main = "TRI for sectors")
 
+
+### Covar condition: 52.03
+Cond.Covar <- kappa(covar, exact = TRUE)
 ###############################################################################
 ## Plots Assets by volatility (sd) and return (mean return)#################
 ###############################################################################
