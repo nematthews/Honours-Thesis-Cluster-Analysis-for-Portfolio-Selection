@@ -36,6 +36,7 @@ library(rbenchmark)
 library(nloptr) # for SQP
 library(quadprog) # for QP
 library(ggplot2)
+library(dplyr)
 
 
 ###############################################################################
@@ -176,7 +177,7 @@ test_HRP <- HRP_Fn(corr = corr_HRP, cov = covar_HRP)
 # need a for loop to step forward by a month, shifting window
 
 ###### initialize storage and inputs:
-Window  <- 48 # (Can change between 3 to 4 years: 36 -> 48)
+Window  <- 36 # (Can change between 3 to 4 years: 36 -> 48)
 N <- dim(tsGRet)
 #######################################################
 # ************** Shifting Window **************
@@ -265,6 +266,7 @@ for (i in Window:(tot[1]-1)){
         #5. CM realised returns
         Shift_tsCMRet[i] <- CMWts %*% t(tsGRet[i,])
         
+        
         #######  Update BH Weights ######
         # Calc month end weight
         Shift_tsBH_WtsEnd[i,] <- (tsGRet[i,]*Shift_tsBH_Wts0[i,])+Shift_tsBH_Wts0[i,]
@@ -301,15 +303,15 @@ Grow_HRP_PRet        <-  tsGRet[,1]*0 # store Return that we would get if we use
 names(Grow_HRP_PRet) <- "HRP "
 
 #5. Constant Mix (SR)
-m.1     <- colMeans(tsGRet[(1) :(Window-1),], na.rm = T)
-covar.1 <- var(tsGRet[(1) :(Window-1),], na.rm = T)
+m.1     <- colMeans(tsGRet[1 :(Window-1),], na.rm = T)
+covar.1 <- var(tsGRet[1 :(Window-1),], na.rm = T)
 
 CMWts               <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
 Grow_tsCMRet        <- Grow_tsPRet
 names(Grow_tsCMRet) <- "Constant-Mix"
 
 
-for (i in Window:(nrow(tsGRet)-1)){
+for (i in Window:(tot[1]-1)){
         
         #### need new stats of new window each time
         # Growing Window
@@ -410,27 +412,32 @@ Grow_tsPRet_4 <- as.data.frame(clean_Grow_tsPRet[1:4,])
 #######################################################
 # ************** Shifting Window PLOT **************
 
+## ALSI
+tsALSI <- tsMKT[Window:i,]
+# 0 initial return
+tsALSI[1,]=0
+
 #Compute the wealth index
 S_tsIndx <- merge(colCumprods(exp(Shift_tsERet)),colCumprods(exp(Shift_tsPRet)))
 S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsBHRet)))
 S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_HRP_PRet)))
 S_tsIndx <- merge(S_tsIndx,colCumprods(exp(Shift_tsCMRet)))
-S_tsIndx <- merge(S_tsIndx,colCumprods(exp(tsRRF)))
 # remove zeros from the first half
 S_tsIndx <- S_tsIndx[Window:i,]
+# Add ALSI
+S_tsALL <- merge(S_tsIndx,colCumprods(exp(tsALSI)))
 # print header
-head(S_tsIndx)
+head(S_tsALL)
 
 ## Visualise the Equity Curves
 # plot the merge indices
-plot(S_tsIndx,plot.type = "s", col = c("orange", "black", "blue", "green", "purple","red"))
+plot(S_tsALL,plot.type = "s", col = c("orange", "black", "blue", "green", "purple","red") ,at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Wealth Index")
 # turn on the grid
-grid(nx = 50)
 # title
-title(main = "Shifting Window Equity Curve")
+title(main = "Overlapping Rolling Window Equity Curve")
 # legend
 # EQW, SR, BH, HRP, CM
-legend("topleft",names(S_tsIndx),col = c("orange","black","blue","green", "purple","red"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid'), bty = "n")
+legend("topleft",names(S_tsALL),col = c("orange","black","blue","green", "purple","red"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid'), bty = "n")
 
 #######################################################
 # ************** Growing Window PLOT **************
@@ -444,26 +451,29 @@ G_tsIndx <- merge(G_tsIndx,colCumprods(exp(Grow_tsCMRet)))
 # tsIndx <-colCumprods(exp(tsPRet))
 # remove the padded zero from the first half
 G_tsIndx <- G_tsIndx[Window:i,]
+G_tsIndx <- as.timeSeries(G_tsIndx)
+# Add ALSI
+G_tsALL <- merge(G_tsIndx,colCumprods(exp(tsALSI)))
 # print header
-head(G_tsIndx)
+head(G_tsALL)
 
 ## Visualise the Equity Curves
 # plot the merge indices
-plot(G_tsIndx,plot.type = "s", col = c("orange", "black", "blue", "green", "purple"))
+plot(G_tsALL,plot.type = "s", col = c("orange", "black", "blue", "green", "purple", "red"), at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Wealth Index")
 # turn on the grid
-grid(nx = 10)
+#grid()
 # title
 title(main = "Growing Window Equity Curve")
 # legend
 # EQW, SR, CM, HRP
-legend("topleft",names(G_tsIndx),col = c("orange","black","blue","green","purple"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid','solid'),bty = "n")
+legend("topleft",names(G_tsALL),col = c("orange","black","blue","green","purple","red"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid','solid','solid'),bty = "n")
 
 ############################################################################### 
 
 # DO TO list:
 
 ### NINA
-# 0. link git (issues)
+# 0. link git (DONE)
 # 1. Need to change BH to constant mix portfolio (DONE)
 # 2. Add proper BH port (DONE)
 # 3. Compute and plot turnovers 
