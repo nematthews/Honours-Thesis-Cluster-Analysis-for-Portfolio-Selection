@@ -3,27 +3,37 @@ Code and Data needed to replicate our results.
 
 # R Code 
 
-## Project: Honours Thesis: Cluster Analysis for Portfolio Construction
+##  Honours Thesis: Cluster Analysis for Portfolio Construction
 ### Author: Nina Matthews
-### Partner: Siphesihle Cele
+### Author: Siphesihle Cele
 ### Supervisor: Tim Gebbie
 
 #############################################################################
 #############################################################################
 
 
-# Doc Summary:
-Using PT assignment data (see "PT-TAA.RData") to test portfolio construction and rolling windows
+The Hierarchical Risk Parity Algorithm in Comparison To Mean-Variance for Portfolio Selection.
 
-## Functions for:
+### Functions for: 
  1. Equally Weighted Port
  2. SR Maximizing Port
  3. Buy-Hold
  4. HRP Port
  5. Constant Mix Port
 
-# Rolling Windows 
-### Window of length of half of data (rounded if odd number)
- 1. Shifting Window
- 2. Growing Window
+### Backtest Simulation
+1. Overlapping Rolling window 
+2. Growing Window
 
+### Data collection and processing
+1. Sourced from Bloomberg
+2. Data cleaning
+3. Winsorizing
+4. Geometrically compounding returns
+5. Obtaining Covariance matrix
+
+### Performance measures
+1. Probability of Backtest overfitting
+2. Deflated Sharpe Ratio
+3. IS vs OOS measures
+4. Portfolio turnovers
