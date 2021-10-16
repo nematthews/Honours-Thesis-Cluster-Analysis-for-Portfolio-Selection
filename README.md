@@ -6,7 +6,7 @@ Code and Data needed to replicate our results.
 ##  Honours Thesis: Cluster Analysis for Portfolio Construction
 ### Author: Nina Matthews
 ### Author: Siphesihle Cele
-### Supervisor: Tim Gebbie
+### Supervisor: A/Prof. Tim Gebbie
 
 #############################################################################
 #############################################################################
