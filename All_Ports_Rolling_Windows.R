@@ -497,3 +497,5 @@ legend("topleft",names(G_tsALL),col = c("orange","magenta","blue","green","purpl
 
 
 ### Relative mix changes over time depending on how the real asset classes in relative perform
+
+### Checking changes
