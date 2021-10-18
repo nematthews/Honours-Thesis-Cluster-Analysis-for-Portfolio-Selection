@@ -206,7 +206,7 @@ Overlap_tsBH_WtsEnd   <- tsGRet* 0 # for i-th month
 Overlap_tsBH_Wts0[Window,] <- BHWts
 # BH Portfolio total realised Returns per rolled month
 Overlap_tsBHRet <- Overlap_tsPRet 
-names(Overlap_tsBHRet) <- "Buy-Hold"
+names(Overlap_tsBHRet) <- "SR Maximizing Buy-Hold"
 
 #4. HRP storage
 Overlap_HRP_Wts   <- tsGRet* 0 # weight per asset at each time step
@@ -219,7 +219,7 @@ covar.1 <- var(tsGRet[1:(Window-1),], na.rm = T)
 # Initialise weights
 CMWts <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
 Overlap_tsCMRet <- Overlap_tsPRet # CM Returns per rolled month
-names(Overlap_tsCMRet) <- "Constant Mix"
+names(Overlap_tsCMRet) <- "SR Maximizing Constant Mix"
 
 # Step forwards by a month using loop
 tot <- dim(tsGRet)
@@ -263,7 +263,7 @@ for (i in Window:(tot[1]-1)){
         Overlap_tsBHRet[i] <- Overlap_tsBH_Wts0[i,] %*% t(tsGRet[i,])
         
         #4. HRP realised returns
-        Overlap_HRP_PRet [i] <- Overlap_HRP_Wts[i,] %*% t(tsGRet[i,])
+        Overlap_HRP_PRet[i] <- Overlap_HRP_Wts[i,] %*% t(tsGRet[i,])
         
         #5. CM realised returns
         Overlap_tsCMRet[i] <- CMWts %*% t(tsGRet[i,])
@@ -297,7 +297,7 @@ Grow_tsBH_WtsEnd        <- tsGRet* 0 # for i-th month
 Grow_tsBH_Wts0[Window,] <- BHWts
 # BH Portfolio total Returns per rolled month
 Grow_tsBHRet <- Grow_tsPRet 
-names(Grow_tsBHRet) <- "Buy-Hold"
+names(Grow_tsBHRet) <- "SR Maximizing Buy-Hold"
 
 #4. HRP storage
 Grow_HRP_Wts         <- tsGRet* 0 # weight per asset at each time step
@@ -310,7 +310,7 @@ covar.1 <- var(tsGRet[1 :(Window-1),], na.rm = T)
 
 CMWts               <- SR.fn(m = m.1, covar = covar.1,RFR = RFR)
 Grow_tsCMRet        <- Grow_tsPRet
-names(Grow_tsCMRet) <- "Constant-Mix"
+names(Grow_tsCMRet) <- "SR Maximizing Constant-Mix"
 
 
 for (i in Window:(tot[1]-1)){
@@ -347,7 +347,7 @@ for (i in Window:(tot[1]-1)){
         ## Realised Port returns (Sum across all assets) 
         Grow_tsBHRet[i] <- Grow_tsBH_Wts0[i,] %*% t(tsGRet[i,])
         #4. HRP realised returns
-        Grow_HRP_PRet [i] <- Grow_HRP_Wts[i,] %*% t(tsGRet[i,])
+        Grow_HRP_PRet[i] <- Grow_HRP_Wts[i,] %*% t(tsGRet[i,])
         #5. CM realised returns
         Grow_tsCMRet[i] <- CMWts %*% t(tsGRet[i,])
         
@@ -373,10 +373,10 @@ GRet_4 <- as.data.frame(tsGRet[Window:(Window+4),])
 #######################################################
 # ************** Overlap Window **************
 
+# SR Maximizing Port:
 # Remove 0 padding: 2009-11-30 to end
 clean_Overlap_tsWts <- Overlap_tsWts[Window:i,] # row 1 fine
 clean_Overlap_tsPRet <- Overlap_tsPRet[Window:i,] ## row 1 fine
-
 
 # Pull first 4 months
 Overlap_tsWts_4 <- as.data.frame(clean_Overlap_tsWts[1:4,])
@@ -390,6 +390,7 @@ Overlap_tsPRet_4 <- as.data.frame(clean_Overlap_tsPRet[1:4,])
 #######################################################
 # ************** Growing Window **************
 
+# SR Maximizing Port:
 # Remove 0 padding: 2009-11-30 to end
 clean_Grow_tsWts <- Grow_tsWts[Window:i,] # row 1 fine
 clean_Grow_tsPRet <- Grow_tsPRet[Window:i,] # row 1 fine
@@ -430,23 +431,32 @@ O_tsIndx <- merge(O_tsIndx,colCumprods(exp(Overlap_tsCMRet)))
 # remove zeros from the first half
 O_tsIndx <- O_tsIndx[Window:i,]
 # Add ALSI
-S_tsALL <- merge(O_tsIndx,colCumprods(exp(tsALSI)))
+O_tsALL <- merge(O_tsIndx,colCumprods(exp(tsALSI)))
 # Add ALBI
-S_tsALL <- merge(S_tsALL,colCumprods(exp(tsBonds)))
+O_tsALL <- merge(O_tsALL,colCumprods(exp(tsBonds)))
 # print header
-head(S_tsALL)
+head(O_tsALL)
+
 
 ## Visualise the Equity Curves
 # plot the merge indices
-plot(S_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "green", "purple","red", "lightblue") ,at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Wealth Index")
-abline(v = as.POSIXct("2009-02-28"))
-abline(v = as.POSIXct("2014-01-31"))
-abline(v = as.POSIXct("2015-07-31"))
+plot(O_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "green", "purple","red", "lightblue") ,at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Index")
+text(as.POSIXct("2009-02-28"),3.4,"Global Financial Crisis",pos = 2, cex = 1.1, srt = 90)
+text(as.POSIXct("2014-01-31"),4.9,"QE tappering",pos = 2, cex = 1.1, srt = 90)
+text(as.POSIXct("2012-08-31"),4.9,"Marikana massacre",pos = 2, cex = 1.1, srt = 90)
+## Add event lines
+abline(v = as.POSIXct("2009-02-28"),lwd = 1, col = "red") #GFC
+abline(v = as.POSIXct("2014-01-31"),lwd = 1,col = "red") # QE tappering
+abline(v = as.POSIXct("2012-08-31"), lwd = 1,col = "red") # Marikana massacre
+abline(v = as.POSIXct("2015-07-31"), lwd = 1,col = "red") # Not sure yet
+abline(v = as.POSIXct("2008-08-31"), col = 4 ,lwd = 4)
+abline(v = as.POSIXct("2011-08-31"), col = 4 ,lwd = 4)
+abline(v = as.POSIXct("2014-08-31"), col = 4 ,lwd = 4)
 # title
 title(main = "Overlapping Rolling Window Equity Curve")
 # legend
 # EQW, SR, BH, HRP, CM
-legend("topleft",names(S_tsALL),col = c("orange","magenta","blue","green", "purple","red", "lightblue"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid','solid'), bty = "o")
+legend("topleft",names(O_tsALL),col = c("orange","magenta","blue","green", "purple","red", "lightblue"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid','solid'), bty = "o")
 
 #######################################################
 # ************** Growing Window PLOT **************
@@ -457,7 +467,6 @@ G_tsIndx <- merge(colCumprods(exp(Grow_tsERet)),colCumprods(exp(Grow_tsPRet)))
 G_tsIndx <- merge(G_tsIndx,colCumprods(exp(Grow_tsBHRet)))
 G_tsIndx <- merge(G_tsIndx,colCumprods(exp(Grow_HRP_PRet)))
 G_tsIndx <- merge(G_tsIndx,colCumprods(exp(Grow_tsCMRet)))
-# tsIndx <-colCumprods(exp(tsPRet))
 # remove the padded zero from the first half
 G_tsIndx <- G_tsIndx[Window:i,]
 G_tsIndx <- as.timeSeries(G_tsIndx)
@@ -470,17 +479,139 @@ head(G_tsALL)
 
 ## Visualise the Equity Curves
 # plot the merge indices
-plot(G_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "green", "purple", "red","lightblue"), at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Wealth Index")
+plot(G_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "green", "purple", "red","lightblue"), at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Index")
+text(as.POSIXct("2009-02-28"),3.3,"Global Financial Crisis",pos = 2, cex = 1.1, srt = 90)
+text(as.POSIXct("2014-01-31"),4.9,"QE tappering",pos = 2, cex = 1.1, srt = 90)
+text(as.POSIXct("2012-08-31"),4.9,"Marikana massacre",pos = 2, cex = 1.1, srt = 90)
 ## Add event lines
-abline(v = as.POSIXct("2009-02-28"))
-abline(v = as.POSIXct("2014-01-31")) # QE tappering
-abline(v = as.POSIXct("2015-07-31"))
+abline(v = as.POSIXct("2009-02-28"),lwd = 1, col = "red") #GFC
+abline(v = as.POSIXct("2014-01-31"),lwd = 1,col = "red") # QE tappering
+abline(v = as.POSIXct("2012-08-31"), lwd = 1,col = "red") # Marikana massacre
+abline(v = as.POSIXct("2015-07-31"), lwd = 1,col = "red") # Not sure yet
+abline(v = as.POSIXct("2008-08-31"), col = 4 ,lwd = 4)
+abline(v = as.POSIXct("2011-08-31"), col = 4 ,lwd = 4)
+abline(v = as.POSIXct("2014-08-31"), col = 4 ,lwd = 4)
 # title
 title(main = "Growing Window Equity Curve")
 # legend
 # EQW, SR, CM, HRP
 legend("topleft",names(G_tsALL),col = c("orange","magenta","blue","green","purple","red","lightblue"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid','solid','solid','solid'),bty = "o") 
+
+
+###############################################################################
+########## Portfolios Turnover  #################
+###############################################################################
+
+# Turn over as its proportional to trading costs: wE - w0 = change in wts
+# 35 bases points 
+# 0.0035 x delta weights (change in weight?) = % cost of rebalancing 
+
+## NEED vec of W0's and vec We's for each port PER simulation type
+
+#######################################################
+# ************** Overlaping Window PLOT **************
+
+## Storage for End of Month Weights
+# 1. EW
+Overlap_tsE_WtsEnd   <- tsGRet* 0 # for i-th month
+# 2. 
+Overlap_tsSR_WtsEnd   <- tsGRet* 0 # for i-th month
+# 3. BH
+## Already have Wts calculated: Overlap_tsBH_WtsEnd
+# 4. HRP
+Overlap_tsHRP_WtsEnd   <- tsGRet* 0 # for i-th month
+# 5. Constant Mix
+Overlap_tsCM_WtsEnd   <- tsGRet* 0 # for i-th month
+
+## Storage for adjusted ports for trading costs
+# 1. EW
+Overlap_tsE_adj   <- tsGRet[,1]*0 
+# 2. 
+Overlap_tsSR_adj  <- tsGRet[,1]*0 
+# 3. BH
+Overlap_tsBH_adj  <- tsGRet[,1]*0 
+# 4. HRP
+Overlap_tsHRP_adj   <- tsGRet[,1]*0 
+# 5. Constant Mix
+Overlap_tsCM_adj <- tsGRet[,1]*0 
+
+# loop deals with a single month at a time starting with month (Window)
+for (i in Window:(tot[1]-1)){
+        
+        #### End of Month Weights for all ports
+        #1.  Equal
+        Overlap_tsE_WtsEnd[i,] <- (tsGRet[i,]*EWts)+EWts
+        #2. SR
+        Overlap_tsSR_WtsEnd[i,] <- (tsGRet[i,]*Overlap_tsWts[i,])+Overlap_tsWts[i,]
+        # 3. BH 
+        # Overlap_tsBH_WtsEnd
+        #4. HRP
+        Overlap_tsHRP_WtsEnd[i,] <- (tsGRet[i,]*Overlap_HRP_Wts[i,])+Overlap_HRP_Wts[i,]
+        #5. Constant Mix
+        Overlap_tsCM_WtsEnd[i,] <- (tsGRet[i,]*CMWts)+CMWts
+
+        ####### Adjusting returns  
+        #1. Equally weighted realised returns
+        Overlap_tsERet[i] <- sum((EWts*(tsGRet[i,]))-(0.0035*abs(Overlap_tsE_WtsEnd[i,]-EWts)))
+        
+        #2 SR realised returns
+        Overlap_tsSR_adj[i]  <- (Overlap_tsWts[i,] %*% t(tsGRet[i,])-(0.0035*(Overlap_tsSR_WtsEnd[i,]-Overlap_tsWts[i,])))
+        
+        #3. BH realised returns
+        ## Realised Port returns (Sum across all assets) 
+        Overlap_tsBH_adj[i] <- Overlap_tsBH_Wts0[i,] %*% t(tsGRet[i,]-(0.0035*(Overlap_tsBH_WtsEnd[i,]-Overlap_tsBH_Wts0[i,])))
+        
+        #4. HRP realised returns
+        Overlap_tsHRP_adj[i] <- Overlap_HRP_Wts[i,] %*% t(tsGRet[i,]-(0.0035*(Overlap_tsHRP_WtsEnd[i,]-Overlap_HRP_Wts[i,])))
+        
+        #5. CM realised returns
+        Overlap_tsCM_adj[i] <- CMWts %*% t(tsGRet[i,]-(0.0035*(Overlap_tsCM_WtsEnd[i,]-CMWts)))
+        
+        # #### Percentage cost of rebalancing using 35 basis points
+        # #1.  Equal
+        # Overlap_tsE_adj[i] <- Overlap_tsERet[i]-(0.0035*sum(Overlap_tsE_WtsEnd[i,]-EWts))
+        # #2. SR
+        # Overlap_tsSR_adj[i] <- Overlap_tsPRet[i]-(0.0035*sum(Overlap_tsSR_WtsEnd[i,]-Overlap_tsWts[i,]))
+        # # 3. BH 
+        # Overlap_tsBH_adj[i] <- Overlap_tsBHRet[i]-(0.0035*sum(Overlap_tsBH_WtsEnd[i,]-Overlap_tsBH_Wts0[i,]))
+        # #4. HRP
+        # Overlap_tsHRP_adj[i] <- Overlap_HRP_PRet[i]-(0.0035*sum(Overlap_tsHRP_WtsEnd[i,]-Overlap_HRP_Wts[i,]))
+        # #5. Constant Mix
+        # Overlap_tsCM_adj[i] <- Overlap_tsCMRet[i]-(0.0035*sum(Overlap_tsCM_WtsEnd[i,]-CMWts))
+}
+
+
+##### Plot Overlap Adjusted for Turnover Costs
+
+#Compute the wealth index
+O_adj_tsIndx <- cbind(colCumprods(exp(Overlap_tsE_adj)),colCumprods(exp(Overlap_tsSR_adj)))
+O_adj_tsIndx <- merge(O_adj_tsIndx,colCumprods(exp(Overlap_tsBH_adj)))
+O_adj_tsIndx <- merge(O_adj_tsIndx,colCumprods(exp(Overlap_tsHRP_adj)))
+O_adj_tsIndx <- merge(O_adj_tsIndx,colCumprods(exp(Overlap_tsCM_adj)))
+# remove zeros from the first half
+O_adj_tsIndx <- O_adj_tsIndx[Window:i,]
+# Add ALSI
+O_adj_tsALL <- merge(O_adj_tsIndx,colCumprods(exp(tsALSI)))
+# Add ALBI
+O_adj_tsALL <- merge(O_adj_tsALL,colCumprods(exp(tsBonds)))
+# print header
+head(O_adj_tsALL)
+
+## Visualise the Equity Curves
+# plot the merge indices
+plot(O_adj_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "green", "purple","red", "lightblue") ,at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Index")
+abline(v = as.POSIXct("2009-02-28"))
+abline(v = as.POSIXct("2014-01-31"))
+abline(v = as.POSIXct("2015-07-31"))
+# title
+title(main = "Overlapping Rolling Window Equity Curve")
+# legend
+# EQW, SR, BH, HRP, CM
+legend("topleft",names(O_adj_tsALL),col = c("orange","magenta","blue","green", "purple","red", "lightblue"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid','solid'), bty = "o")
+
+
 ############################################################################### 
+
 
 # DO TO list:
 
