@@ -70,7 +70,7 @@ tsGRet <- tsGRet[,Entities] # BOND + EQTY. INDEX. PORTFOLIO
 ## 2. Compute the Geometric mean
 # Expected return for each asset
 m <- colMeans(tsGRet) # n x 1 (where n = # assets)
-covar <- var(tsGRet, na.rm=TRUE) # n x n
+covar <- var(tsGRet) # n x n
 s <- colStdevs(tsGRet) # standard deviation of assets for plot
 
 
@@ -189,7 +189,7 @@ N <- dim(tsGRet)
 
 #1. Equally Weighted
 Overlap_tsERet        <- tsGRet[,1]*0
-names(Overlap_tsERet) <- "Equally Weighted"
+names(Overlap_tsERet) <- "Equally Weighted CM"
 
 # 2. SR storage
 Overlap_tsWts         <- tsGRet* 0 # weight per asset at each time step
@@ -214,13 +214,13 @@ names(Overlap_tsBHRet) <- "SR Maximizing Buy-Hold"
 #4. HRP storage
 Overlap_HRP_Wts   <- tsGRet* 0 # weight per asset at each time step
 Overlap_HRP_PRet  <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
-names(Overlap_HRP_PRet) <- "HRP "
+names(Overlap_HRP_PRet) <- "HRP"
 
 #5. Constant Mix Port
 # Initialise weights
 CMWts <- matrix(c(0.6,0.4),1,2)
 Overlap_tsCMRet <- Overlap_tsPRet # CM Returns per rolled month
-names(Overlap_tsCMRet) <- "Constant Mix 60:40"
+names(Overlap_tsCMRet) <- "Balanced Portfolio 60:40 CM"
 
 # Step forwards by a month using loop
 tot <- dim(tsGRet)
@@ -231,6 +231,7 @@ for (i in Window:(tot[1]-1)){
         #### need new stats of new window each time
         # Overlaping window
         m.i <- colMeans(tsGRet[(1+i-Window) :(i-1),], na.rm = T)
+        covHRP.i <- cov(tsGRet[(1+i-Window) :(i-1),])
         covar.i <- var(tsGRet[(1+i-Window) :(i-1),], na.rm = T)
         corr.i <- cov2cor(covar.i)
         
@@ -246,7 +247,7 @@ for (i in Window:(tot[1]-1)){
         Overlap_tsBH_Wts0[Window,] <- BHWts
         
         #4. HRP
-        Overlap_HRP_Wts[i,] <- HRP_Fn(corr = corr.i, cov = covar.i)
+        Overlap_HRP_Wts[i,] <- HRP_Fn(corr = corr.i, cov = covHRP.i)
         
         #5. Constant Mix
         # Weights calculated outside of for loop
@@ -299,7 +300,7 @@ names(Grow_tsBHRet) <- "SR Maximizing Buy-Hold"
 #4. HRP storage
 Grow_HRP_Wts         <- tsGRet* 0 # weight per asset at each time step
 Grow_HRP_PRet        <-  tsGRet[,1]*0 # store Return that we would get if we used said w's
-names(Grow_HRP_PRet) <- "HRP "
+names(Grow_HRP_PRet) <- "HRP"
 
 # #5. Constant Mix
 # CM under rolling, will be equivalent
@@ -309,9 +310,10 @@ for (i in Window:(tot[1]-1)){
         
         #### need new stats of new window each time
         # Growing Window
-        m.i <- colMeans(tsGRet[1:(i-1),], na.rm=TRUE)
+        m.i <- colMeans(tsGRet[1:(i-1),], na.rm=TRUE)       
+        covHRP.i <- cov(tsGRet[1:(i-1),])
         covar.i <- var(tsGRet[1:(i-1),], na.rm=TRUE)
-        corr.i <- cov2cor(covar.i)
+        corr.i <- cov2cor(covHRP.i)
         
         #### Call opt using above inputs, store returned wts
         #1. Equal
@@ -325,7 +327,7 @@ for (i in Window:(tot[1]-1)){
         Grow_tsBH_Wts0[Window,] <- BHWts
         
         #4. HRP
-        Grow_HRP_Wts[i,] <- HRP_Fn(corr = corr.i, cov = covar.i)
+        Grow_HRP_Wts[i,] <- HRP_Fn(corr = corr.i, cov = covHRP.i)
         
         #5. Constant-Mix
         # Calculated under rolling window, they will be equal
@@ -432,24 +434,21 @@ head(O_tsALL)
 
 ## Visualise the Equity Curves
 # plot the merge indices
-plot(O_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "green", "purple","red", "lightblue") ,at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Index")
+plot(O_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "darkgreen", "purple","red", "lightblue") ,lwd = c(1,1,1,3,1,1,1),at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Index")
 text(as.POSIXct("2009-02-28"),3.4,"Global Financial Crisis",pos = 2, cex = 1.1, srt = 90)
 text(as.POSIXct("2014-01-31"),4.9,"QE tappering",pos = 2, cex = 1.1, srt = 90)
 text(as.POSIXct("2012-08-31"),4.9,"Marikana massacre",pos = 2, cex = 1.1, srt = 90)
 text(as.POSIXct("2015-07-31"),2.5,"Anitdumping Policy",pos = 2, cex = 1.1, srt = 90)
 ## Add event lines
-abline(v = as.POSIXct("2009-02-28"),lwd = 1, col = "red") #GFC
-abline(v = as.POSIXct("2014-01-31"),lwd = 1,col = "red") # QE tappering
-abline(v = as.POSIXct("2012-08-31"), lwd = 1,col = "red") # Marikana massacre
-abline(v = as.POSIXct("2015-07-31"), lwd = 1,col = "red") # Not sure yet
-# abline(v = as.POSIXct("2008-08-31"), col = 4 ,lwd = 4)
-# abline(v = as.POSIXct("2011-08-31"), col = 4 ,lwd = 4)
-# abline(v = as.POSIXct("2014-08-31"), col = 4 ,lwd = 4)
+abline(v = as.POSIXct("2009-02-28"),lwd = 3,col = "black") #GFC
+abline(v = as.POSIXct("2014-01-31"),lwd = 3,col = "black") # QE tappering
+abline(v = as.POSIXct("2012-08-31"), lwd = 3,col = "black") # Marikana massacre
+abline(v = as.POSIXct("2015-07-31"), lwd = 3,col = "black") # Antidumping
 # title
 title(main = "Overlapping Rolling Window Equity Curve")
 # legend
 # EQW, SR, BH, HRP, CM
-legend("topleft",names(O_tsALL),col = c("orange","magenta","blue","green", "purple","red", "lightblue"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid','solid'), bty = "o")
+legend("topleft",c(names(O_tsALL)[1:5], "ALSI (Equity)", "ALBI (Bonds)"),col = c("orange","magenta","blue","darkgreen", "purple","red", "lightblue"), lwd = c(2,2,2,3,2,2,2), lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid','solid'), bty = "o")
 
 #######################################################
 # ************** Growing Window PLOT **************
@@ -472,24 +471,22 @@ head(G_tsALL)
 
 ## Visualise the Equity Curves
 # plot the merge indices
-plot(G_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "green", "purple", "red","lightblue"), at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Index")
+plot(G_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "darkgreen", "purple", "red","lightblue"), lwd = c(1,1,1,3,1,1,1), at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Index")
 text(as.POSIXct("2009-02-28"),3.3,"Global Financial Crisis",pos = 2, cex = 1.1, srt = 90)
 text(as.POSIXct("2014-01-31"),4.9,"QE tappering",pos = 2, cex = 1.1, srt = 90)
 text(as.POSIXct("2012-08-31"),4.9,"Marikana massacre",pos = 2, cex = 1.1, srt = 90)
 text(as.POSIXct("2015-07-31"),2.5,"Anitdumping Policy",pos = 2, cex = 1.1, srt = 90)
 ## Add event lines
-abline(v = as.POSIXct("2009-02-28"),lwd = 1, col = "red") #GFC
-abline(v = as.POSIXct("2014-01-31"),lwd = 1,col = "red") # QE tappering
-abline(v = as.POSIXct("2012-08-31"), lwd = 1,col = "red") # Marikana massacre
-abline(v = as.POSIXct("2015-07-31"), lwd = 1,col = "red") # Not sure yet
-#abline(v = as.POSIXct("2008-08-31"), col = 4 ,lwd = 4)
-#abline(v = as.POSIXct("2011-08-31"), col = 4 ,lwd = 4)
-#abline(v = as.POSIXct("2014-08-31"), col = 4 ,lwd = 4)
+abline(v = as.POSIXct("2009-02-28"),lwd = 3,col = "black") #GFC
+abline(v = as.POSIXct("2014-01-31"),lwd = 3,col = "black") # QE tappering
+abline(v = as.POSIXct("2012-08-31"), lwd = 3,col = "black") # Marikana massacre
+abline(v = as.POSIXct("2015-07-31"), lwd = 3,col = "black") # Antidumping
+
 # title
 title(main = "Growing Window Equity Curve")
 # legend
 # EQW, SR, CM, HRP
-legend("topleft",names(G_tsALL),col = c("orange","magenta","blue","green","purple","red","lightblue"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid','solid','solid','solid'),bty = "o") 
+legend("topleft",c(names(G_tsALL)[1:5], "ALSI (Equity)", "ALBI (Bonds)"),col = c("orange","magenta","blue","darkgreen", "purple","red", "lightblue"), lwd = c(2,2,2,3,2,2,2), lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid','solid'), bty = "o")
 
 
 ###############################################################################
