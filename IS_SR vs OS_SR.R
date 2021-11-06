@@ -51,14 +51,14 @@ tsGRet <- tsGRet[,Entities] # BOND + EQTY. INDEX. PORTFOLIO
 
 # establish 60 split:
 # dim(tsGRet)[1]*0.6 = 88.8
-ISGret <- head(tsGRet,72)
-OOSGRet <- tail(tsGRet,76)
+ISGret <- head(tsGRet,88)
+OOSGRet <- tail(tsGRet,60)
 
-ISRFR <- head(tsRRF,72)
-OOSRFR <- tail(tsRRF,76)
+ISRFR <- head(tsRRF,88)
+OOSRFR <- tail(tsRRF,60)
 
-ISMKT <- head(tsMKT,72)
-OOSMKT <- tail(tsMKT,76)
+ISMKT <- head(tsMKT,88)
+OOSMKT <- tail(tsMKT,60)
 
 
 ############################################################################# 
@@ -125,12 +125,13 @@ heatmap(cIS)
 # visualise the correlation matrix
 rho1 <- cov2cor(cIS)
 
+par(mar = c(5,4,4,4))
 plot(sIS, mIS,
      ylab="Expected Return [%]",
      xlab ="Volatility [%]",
      main="IS Monthly Hist. Risk & Return",
      # plot.type="s",
-     ylim = c(0, 0.04), xlim = c(0, 0.12))
+     ylim = c(0, 0.025), xlim = c(0, 0.12))
 
 # turn on the grid
 grid()
@@ -179,7 +180,7 @@ IS.SR <- (ISERet2 - rfrIS) / sqrt(ISERisk2)
 # add risk return curves to plot
 points(ISdfA2,pch = 19, type = "l", lwd=1, col ="blue")
 # annotate
-text(0.025,0.013,labels='Efficient Frontier',pos = 4, col ="blue")
+text(0.025,0.013,labels='IS Efficient Frontier',pos = 4, col ="blue")
 
 ## 9. Find The Sharpe Ratio maximising portfolio
 # Initial values as fully invested equally weighted portfolio
@@ -199,7 +200,8 @@ soln <- slsqp(Wts0, fn = fn0, gr = NULL, # target returns
               lower = rep(0,length(Wts0)), # no short-selling
               upper = rep(1,length(Wts0)), # no leverage
               heq = heq0, # fully invested constraint function
-              control = list(xtol_rel = 1e-8)) # SQP
+              control = list(xtol_rel = 1e-8),
+              nl.info = TRUE) # SQP
 Wts <- soln$par
 # print the weight matrix
 print(Wts)
@@ -246,9 +248,10 @@ IS.HRP.Ret <-sum(IS.HRP.wts%*%mIS)
 IS.HRP.risk2 <- t(IS.HRP.wts) %*% IS.Sigma2 %*% IS.HRP.wts
 
 points(sqrt(IS.HRP.risk2),IS.HRP.Ret, col = "darkgreen",cex = 2,lwd = 3)
+points(0.02,0.298)
 
-legend('bottomright', legend = c("Sharpe Ratio Maximizing", 'HRP', "Equally weighted", "Efficiency Frontier", "SR vs Risk"), 
-       col = c('magenta', 'darkgreen',"orange","blue", "red"), lwd = c(3,3,3,1,1), lty = c('solid', 'solid', "solid","solid", "dashed"))
+legend('bottomright', legend = c("IS Sharpe Ratio Maximizing", 'IS HRP', "Equally weighted", "IS Efficiency Frontier", "IS Sharpe Ratio"), 
+       col = c('magenta', 'darkgreen',"orange","blue", "red"), lwd = c(3,3,3,1,1), lty = c(NA, NA, NA,"solid", "dashed"), cex = 0.9, pch = c(1,1,1, NA,NA))
 
 ###############################################################################
 
@@ -260,17 +263,18 @@ IS.ERiskPSR <- Wts %*% IS.Sigma2 %*% Wts
 points(sqrt(IS.ERiskPSR),IS.ERetPSR,pch = 1, type = "p", col ="magenta", cex = 2, lwd = 3)
 points(sqrt(IS.EquiRisk2),IS.EquiRet, col = "orange",cex = 2, lwd = 3)
 # include text
-text(sqrt(IS.ERiskPSR), IS.ERetPSR,labels='IS Maximal Sharpe Ratio', col = 'magenta', cex= 1, pos = 2)
-text(0.06,0.025, "SR vs Risk", col = "red")
-
-## 11. Plot SML (Security Market Line)
+#text(sqrt(IS.ERiskPSR), IS.ERetPSR,labels='IS Maximal Sharpe Ratio', col = 'magenta', cex= 1, pos = 2)
+text(0.06,0.025, "SR", col = "red")
+# 
+# # 11. Plot SML (Security Market Line)
 # IS.SR0 <- ((IS.ERetPSR-rfrIS) / sqrt(IS.ERiskPSR))
 # IS.eq = function(IS.x){return(as.numeric(rfrIS + c(IS.SR0) * IS.x))}
 # IS.x <- seq(from=0,to=0.30,length.out=20)
 # points(IS.x, IS.eq(IS.x), type = "l", col="red")
-#text(0.09,0.20,labels='Market Line', srt = 45, col = 'red', pos = 4)
+# text(0.09,0.20,labels='Market Line', srt = 45, col = 'red', pos = 4)
 
 # plot the Sharpe Ratio against risk levels
+#par(mfrow=c(6,4),mar=c(1,1,1,1), oma=c(3,1,0,0))
 par(new = T)
 plot(sqrt(ISERisk2),IS.SR, axes=F, type ="l", lty = 2, col="red",xlab=NA, ylab=NA,xlim = c(0, 0.12))
 axis(side = 4)
@@ -313,6 +317,74 @@ grid()
 text(sOOS, mOOS,labels=names(mOOS), cex= 1, pos = 4)
 
 
+############################################################################# Optimal SR Max OOS 
+#############################################################################
+
+## Plot the efficient frontier.
+# create the range of risk aversion parameters
+lambda <- seq(from=0,to=1,length.out=80)
+# Fully Invested
+A <- matrix (1, nrow=length(mOOS))
+b <- 1
+meq <- 1
+# No short-selling
+A <- cbind(1, diag(length(mOOS)))
+b <- c(b, rep(0, length(mOOS)))
+# initialise the weights
+OOS.Wts <- matrix(NA,length(lambda),length(mOOS))
+# 8. Find the weight vector for each return level
+for (i in 1:length(lambda)) {
+        f <- mOOS * lambda[i] # This moves the solution up along the efficient frontier
+        H <- cOOS # the covariance matrix
+        OOS.sol <- solve.QP(H, f, A, b, meq=1)
+        OOS.Wts[i,] <- OOS.sol$solution
+}
+
+# use replicate and element-wise multiplication to find the Expected Returns
+OOSERet2 <- rowSums(OOS.Wts * t(replicate(nrow(OOS.Wts),mOOS)))
+# use matrix multiplication to find the risk
+# loop over each asset pair and compute risk each weigth vector
+# preallocate zero (could use NA)
+OOSERisk2 <- numeric(nrow(OOS.Wts))
+OOSERisk2[] <- NA
+# pre-compute covariance matrix
+OOS.Sigma2 <- matrix(cOOS,nrow(cOOS),nrow(cOOS))
+# compute the portfolio volatility
+for (i in 1:nrow(OOS.Wts)) {OOSERisk2[i] <- as.numeric(OOS.Wts[i,]) %*% OOS.Sigma2 %*% as.numeric(OOS.Wts[i,])}
+# add the return and risk columns to data frame
+OOSdfA2 <- cbind(sqrt(OOSERisk2),OOSERet2)
+# compute the sharpe ration
+OOS.SR <- (OOSERet2 - rfrOOS) / sqrt(OOSERisk2)
+# add risk return curves to plot
+points(OOSdfA2,pch = 19, type = "l", lwd=1, col ="blue")
+# annotate
+text(0.02,0.012,labels='IS Efficient Frontier',pos = 4, col ="blue")
+
+## 9. Find The Sharpe Ratio maximising portfolio
+# Initial values as fully invested equally weighted portfolio
+Ones0 <- seq(1,1,length.out = length(mOOS))
+# equally weighted portfolio
+Correct.Wts0 <- Ones0 / length(Ones0)
+# unit vector
+e <- rep(1,length(Correct.Wts0)) # useful matrix (ones)
+# initialise the weights
+Correct.Wts <- matrix(NA,1,length(mOOS))
+# 8. Maximise the Sharpe Ratio
+fn0 <- function(x) {return(-(x%*% mOOS - rfrOOS)/ sqrt(x %*% cOOS %*% x) )}
+# Fully Invested + Return Target
+heq0 <- function(x) {return(x %*% e - 1)} # fully invested
+# Use SQP to solve for the tangency portfolio
+soln <- slsqp(Correct.Wts0, fn = fn0, gr = NULL, # target returns
+              lower = rep(0,length(Correct.Wts0)), # no short-selling
+              upper = rep(1,length(Correct.Wts0)), # no leverage
+              heq = heq0, # fully invested constraint function
+              control = list(xtol_rel = 1e-8),
+              nl.info = TRUE) # SQP
+Correct.Wts <- soln$par
+# print the weight matrix
+print(Correct.Wts)
+
+
 ###############################################################################
 ############## OOS Equally weighted portfolio  ###################### 
 ###############################################################################
@@ -320,6 +392,7 @@ text(sOOS, mOOS,labels=names(mOOS), cex= 1, pos = 4)
 
 # Initialise weights as an equally weighted portfolio
 Wts0 <- as.vector(seq(1,1,length.out = length(mOOS)) / length(mOOS))
+
 
 # Returns for any portfolio with equal weights
 OOS.EquiRet <-sum(Wts0*mOOS)
@@ -331,11 +404,39 @@ OOS.Sigma2 <- matrix(cOOS,nrow(cOOS),nrow(cOOS))
 
 OOS.EquiRisk2 <- t(Wts0) %*% OOS.Sigma2 %*% Wts0
 
-points(sqrt(OOS.EquiRisk2),OOS.EquiRet, col = "orange",cex = 2, lwd = 3)
+points(sqrt(OOS.EquiRisk2),OOS.EquiRet, col = "orange",cex = 2, lwd = 3, pch = 4)
 
 ####################
 ############## OOS HRP portfolio  ###################### 
 ###############################################################################
+
+###############################################################################
+############## IS HRP portfolio  ###################### 
+###############################################################################
+source("HRP Fn.R")
+
+
+# get correlation matrix
+OOS.VarMat <- var(OOScltsGRet)
+# annualized
+OOS.corMat <- cov2cor(OOS.VarMat)
+
+
+#### CLUSTERING ###
+
+OOS.HRP.wts <- HRP_Fn(corr = OOS.corMat, cov = OOS.VarMat)
+
+OOSm <- matrix(mOOS,nrow = length(mOOS), ncol = 1)
+
+# Returns for HRP portfolio
+OOS.HRP.Ret <-sum(OOS.HRP.wts%*%mOOS)
+# IS.Sigma2 <- matrix(covar,nrow(covar),nrow(covar))
+OOS.HRP.risk2 <- t(OOS.HRP.wts) %*% OOS.Sigma2 %*% OOS.HRP.wts
+
+points(sqrt(OOS.HRP.risk2),OOS.HRP.Ret, col = "darkgreen",cex = 2,lwd = 3, pch = 1)
+#points(0.02,0.298)
+
+#####################################################################################################
 
 ### Use weights from IS:
 
@@ -350,32 +451,43 @@ OOS.HRP.Ret <-t(IS.HRP.wts)%*%mOOS
 # IS.Sigma2 <- matrix(covar,nrow(covar),nrow(covar))
 OOS.HRP.risk2 <- t(IS.HRP.wts) %*% OOS.Sigma2 %*% IS.HRP.wts
 
-points(sqrt(OOS.HRP.risk2),OOS.HRP.Ret, col = "darkgreen",cex = 2, lwd = 3)
+points(sqrt(OOS.HRP.risk2),OOS.HRP.Ret, col = "darkgreen",cex = 2, lwd = 3, pch = 4)
 
-legend('bottomright', legend = c("Sharpe Ratio Maximizing", 'HRP', "Equally weighted", "Efficiency Frontier", "SR vs Risk"), 
-       col = c('magenta', 'darkgreen',"orange","blue", "red"), lwd = c(3,3,3,1,1), lty = c('solid', 'solid', "solid","solid", "dashed"))
+legend('bottomright', legend = c("IS Sharpe Ratio","OOS Sharpe Ratio", "IS HRP",'OOS HRP', "Equally weighted", "IS Efficiency Frontier", "IS Sharpe Ratio"), 
+       col = c('magenta','magenta', 'darkgreen',"darkgreen","orange","blue", "red"), lwd = c(3,3,3,3,3,1,1), lty = c(NA,NA,NA, NA, NA,"solid", "dashed"), cex = 0.9, pch = c(1,4,1,4,4, NA,NA))
 ####################
+
+## 10. Compute return and risk for each weight vector
+Correct.OOS.ERetPSR <- Correct.Wts %*% mOOS
+# use matrix multiplication to find the risk
+Correct.OOS.ERiskPSR <- Correct.Wts %*% OOS.Sigma2 %*% Correct.Wts 
+# add risk return curves to plot
+points(sqrt(Correct.OOS.ERiskPSR),Correct.OOS.ERetPSR,pch = 1, type = "p", col ="magenta", cex = 2, lwd = 3)
+
 
 ## 10. Compute return and risk for each weight vector
 OOS.ERetPSR <- Wts %*% mOOS
 # use matrix multiplication to find the risk
 OOS.ERiskPSR <- Wts %*% OOS.Sigma2 %*% Wts 
 # add risk return curves to plot
-points(sqrt(OOS.ERiskPSR),OOS.ERetPSR,pch = 13, type = "p", col ="magenta", cex = 2)
-points(sqrt(OOS.EquiRisk2),OOS.EquiRet, col = "orange",cex = 2)
+points(sqrt(OOS.ERiskPSR),OOS.ERetPSR, type = "p", col ="magenta", cex = 2, lwd =3, pch = 4)
+points(sqrt(OOS.EquiRisk2),OOS.EquiRet, col = "orange",cex = 2, lwd = 3, pch = 4)
+
+text(0.04,0.025, "SR", col = "red")
 # include text
-text(sqrt(OOS.ERiskPSR), OOS.ERetPSR,labels='SOO Maximal Sharpe Ratio', col = 'magenta', cex= 1, pos = 4)
+#text(sqrt(OOS.ERiskPSR), OOS.ERetPSR,labels='SOO Maximal Sharpe Ratio', col = 'magenta', cex= 1, pos = 4)
 
 ## 11. Plot SML (Security Market Line)
-OOS.SR0 <- ((OOS.ERetPSR-rfrIS) / sqrt(OOS.ERiskPSR))
-OOS.eq = function(OOS.x){return(as.numeric(rfrOOS + c(OOS.SR0) * OOS.x))}
-OOS.x <- seq(from=0,to=0.30,length.out=20)
-points(OOS.x, OOS.eq(OOS.x), type = "l", col="red")
-text(0.09,0.20,labels='Market Line', srt = 45, col = 'red', pos = 4)
+# OOS.SR0 <- ((OOS.ERetPSR-rfrIS) / sqrt(OOS.ERiskPSR))
+# OOS.eq = function(OOS.x){return(as.numeric(rfrOOS + c(OOS.SR0) * OOS.x))}
+# OOS.x <- seq(from=0,to=0.30,length.out=20)
+# points(OOS.x, OOS.eq(OOS.x), type = "l", col="red")
+# text(0.09,0.20,labels='Market Line', srt = 45, col = 'red', pos = 4)
 
 # plot the Sharpe Ratio against risk levels
 par(new = T)
-plot(sqrt(OOS.ERisk2),OOS.SR, axes=F, type ="l", lty = 2, col="blue",xlab=NA, ylab=NA,xlim=c(0.05,0.28))
+plot(sqrt(OOSERisk2),OOS.SR, axes=F, type ="l", lty = 2, col="red",xlab=NA, ylab=NA,xlim=c(0.0,0.15))
 axis(side = 4)
 
 mtext(expression(Sharpe ~ Ratio: ~ ~ frac(mu-R[f],sigma )), side = 4, col ="red", line = 3)
+
