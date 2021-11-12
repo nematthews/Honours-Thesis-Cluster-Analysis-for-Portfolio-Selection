@@ -370,6 +370,7 @@ GRet_4 <- as.data.frame(tsGRet[Window:(Window+4),])
 # SR Maximizing Port:
 # Remove 0 padding: 2009-11-30 to end
 clean_Overlap_tsWts <- Overlap_tsWts[Window:i,] # row 1 fine
+clean_Overlap_HRP_Wts <- Overlap_HRP_Wts[Window:i,] # row 1 fine
 clean_Overlap_tsPRet <- Overlap_tsPRet[Window:i,] ## row 1 fine
 
 # Pull first 4 months
