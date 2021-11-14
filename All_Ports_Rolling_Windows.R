@@ -1,6 +1,6 @@
-# 09/10/2021
 # Author: Nina Matthews
 # Project: Honours Thesis: Cluster Analysis for Portfolio Construction
+# Last edit: 14/11/21
 # Partner: Siphesihle Cele
 # Supervisor: Tim Gebbie
 
@@ -9,7 +9,7 @@
 
 
 ### Doc Summary:
-# Using PT assignment data to test portfolio construction and rolling windows
+# Using Dataset 1 to test portfolio construction and rolling windows
 
 ### Functions for: ####
 # 1. Equally Weighted Port
@@ -85,6 +85,7 @@ plot(tsGRet,plot.type = c("single"),
 ### Covar condition: 52.03
 Cond.Covar <- kappa(covar, exact = TRUE)
 Cond.Covar
+
 ###############################################################################
 ## Plots Assets by volatility (sd) and return (mean return)#################
 ###############################################################################
@@ -490,157 +491,141 @@ title(main = "Growing Window Equity Curve")
 legend("topleft",c(names(G_tsALL)[1:5], "ALSI (Equity)", "ALBI (Bonds)"),col = c("orange","magenta","blue","darkgreen", "purple","red", "lightblue"), lwd = c(2,2,2,3,2,2,2), lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid','solid'), bty = "o")
 
 
-###############################################################################
-########## Portfolios Turnover  #################
-###############################################################################
-
-# Turn over as its proportional to trading costs: wE - w0 = change in wts
-# 35 bases points 
-# 0.0035 x delta weights (change in weight?) = % cost of rebalancing 
-
-## NEED vec of W0's and vec We's for each port PER simulation type
-
-#######################################################
-# ************** Overlaping Window PLOT **************
-
-## Storage for End of Month Weights
-# 1. EW
-Overlap_tsE_WtsEnd   <- tsGRet* 0 # for i-th month
-# 2. SR
-Overlap_tsSR_WtsEnd   <- tsGRet* 0 # for i-th month
-# 3. BH
-## Already have Wts calculated: Overlap_tsBH_WtsEnd
-# 4. HRP
-Overlap_tsHRP_WtsEnd   <- tsGRet* 0 # for i-th month
-# 5. Constant Mix
-Overlap_tsCM_WtsEnd   <- tsCM* 0 # for i-th month
-
-## Storage for Monthly % cost p/Portfolio
-#1. Equal 
-Overlap_tsE_TOver <- tsGRet[,1]*0 
-#2. SR 
-Overlap_tsSR_TOver <- tsGRet[,1]*0 
-#3. BH 
-Overlap_tsBH_TOver <- tsGRet[,1]*0 
-#4. HRP 
-Overlap_tsHRP_TOver <- tsGRet[,1]*0 
-#5. CM 
-Overlap_tsCM_TOver <- tsCM[,1]*0 
-
-## Storage for adjusted ports realised returns for trading costs
-# 1. EW
-Overlap_tsE_adj   <- tsGRet[,1]*0 
-# 2. 
-Overlap_tsSR_adj  <- tsGRet[,1]*0 
-# 3. BH
-Overlap_tsBH_adj  <- tsGRet[,1]*0 
-# 4. HRP
-Overlap_tsHRP_adj   <- tsGRet[,1]*0 
-# 5. Constant Mix
-Overlap_tsCM_adj <- tsCM[,1]*0 
-
-# loop deals with a single month at a time starting with month (Window)
-for (i in Window:(tot[1]-1)){
-        
-        #### End of Month Weights for all ports
-        #1.  Equal
-        Overlap_tsE_WtsEnd[i,] <- (tsGRet[i,]*EWts)+EWts
-        #2. SR
-        Overlap_tsSR_WtsEnd[i,] <- (tsGRet[i,]*Overlap_tsWts[i,])+Overlap_tsWts[i,]
-        # 3. BH 
-        # Overlap_tsBH_WtsEnd
-        #4. HRP
-        Overlap_tsHRP_WtsEnd[i,] <- (tsGRet[i,]*Overlap_HRP_Wts[i,])+Overlap_HRP_Wts[i,]
-        #5. Constant Mix
-        Overlap_tsCM_WtsEnd[i,] <- (tsCM[i,]*CMWts)+CMWts
-        
-        ######## P Turnover per month ## ISSUE LIES HERE
-        #1. Equal 
-        Overlap_tsE_TOver[i] <- apply(abs(Overlap_tsE_WtsEnd - EWts),1,sum)
-        #2. SR
-        Overlap_tsSR_TOver[i] <- apply(abs(Overlap_tsSR_WtsEnd - Overlap_tsWts),1,sum)
-        #3. BH
-        Overlap_tsBH_TOver[i] <- apply(abs(Overlap_tsBH_WtsEnd - Overlap_tsBH_Wts0),1,sum)
-        #4. HRP
-        Overlap_tsHRP_TOver[i] <- apply(abs(Overlap_tsHRP_WtsEnd - Overlap_HRP_Wts),1,sum)
-        #5. CM
-        Overlap_tsCM_TOver[i] <- apply(abs(Overlap_tsCM_WtsEnd-CMWts),1,sum)
-        
-        
-        # #### Percentage cost of rebalancing using 35 basis points p/mnth
-        #1.  Equal
-        Overlap_tsE_cost[i] <- 0.0035* Overlap_tsE_TOver[i]
-        #2. SR
-        Overlap_tsSR_cost[i] <- 0.0035* Overlap_tsSR_TOver[i]
-        # 3. BH
-        Overlap_tsBH_cost[i] <- 0.0035* Overlap_tsBH_TOver[i]
-        #4. HRP
-        Overlap_tsHRP_cost[i] <- 0.0035* Overlap_tsE_TOver[i]
-        #5. Constant Mix
-        Overlap_tsCM_cost[i] <- 0.0035* Overlap_tsCM_TOver[i]
-
-        ####### Adjusting returns p/mnth
-        #1. Equally weighted realised returns
-        Overlap_tsE_adj[i] <- Overlap_tsERet[i] - Overlap_tsE_cost[i]
-        
-        #2 SR realised returns
-        Overlap_tsSR_adj[i]  <- Overlap_tsPRet[i] - Overlap_tsSR_cost[i]
-        
-        #3. BH realised returns
-        ## Realised Port returns (Sum across all assets) 
-        Overlap_tsBH_adj[i] <- Overlap_tsBHRet[i] - Overlap_tsBH_cost[i]
-        
-        #4. HRP realised returns
-        Overlap_tsHRP_adj[i] <- Overlap_HRP_PRet[i] - Overlap_tsHRP_cost[i]
-        
-        #5. CM realised returns
-        Overlap_tsCM_adj[i] <- Overlap_tsCMRet[i] - Overlap_tsCM_cost[i]
-}
-
-
-##### Plot Overlap Adjusted for Turnover Costs
-
-#Compute the wealth index
-O_adj_tsIndx <- cbind(colCumprods(exp(Overlap_tsE_adj)),colCumprods(exp(Overlap_tsSR_adj)))
-O_adj_tsIndx <- merge(O_adj_tsIndx,colCumprods(exp(Overlap_tsBH_adj)))
-O_adj_tsIndx <- merge(O_adj_tsIndx,colCumprods(exp(Overlap_tsHRP_adj)))
-O_adj_tsIndx <- merge(O_adj_tsIndx,colCumprods(exp(Overlap_tsCM_adj)))
-# remove zeros from the first half
-O_adj_tsIndx <- O_adj_tsIndx[Window:i,]
-# Add ALSI
-O_adj_tsALL <- merge(O_adj_tsIndx,colCumprods(exp(tsALSI)))
-# Add ALBI
-O_adj_tsALL <- merge(O_adj_tsALL,colCumprods(exp(tsBonds)))
-# print header
-head(O_adj_tsALL)
-
-## Visualise the Equity Curves
-# plot the merge indices
-plot(O_adj_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "green", "purple","red", "lightblue") ,at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Index")
-abline(v = as.POSIXct("2009-02-28"))
-abline(v = as.POSIXct("2014-01-31"))
-abline(v = as.POSIXct("2015-07-31"))
-# title
-title(main = "Overlapping Rolling Window Equity Curve")
-# legend
-# EQW, SR, BH, HRP, CM
-legend("topleft",names(O_adj_tsALL),col = c("orange","magenta","blue","green", "purple","red", "lightblue"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid','solid'), bty = "o")
-
-
-############################################################################### 
-
-
-# DO TO list:
-
-### NINA
-# 1. Compute and plot turnovers 
-
-### SIPHE
-# 1. Deflated SR
-# 2. PBO
-# 3. 
-
-
-### Relative mix changes over time depending on how the real asset classes in relative perform
-
-### Checking changes
+# ###############################################################################
+# ########## Portfolios Turnover  #################
+# ###############################################################################
+# 
+# # Turn over as its proportional to trading costs: wE - w0 = change in wts
+# # 35 bases points 
+# # 0.0035 x delta weights (change in weight?) = % cost of rebalancing 
+# 
+# ## NEED vec of W0's and vec We's for each port PER simulation type
+# 
+# #######################################################
+# # ************** Overlaping Window PLOT **************
+# 
+# ## Storage for End of Month Weights
+# # 1. EW
+# Overlap_tsE_WtsEnd   <- tsGRet* 0 # for i-th month
+# # 2. SR
+# Overlap_tsSR_WtsEnd   <- tsGRet* 0 # for i-th month
+# # 3. BH
+# ## Already have Wts calculated: Overlap_tsBH_WtsEnd
+# # 4. HRP
+# Overlap_tsHRP_WtsEnd   <- tsGRet* 0 # for i-th month
+# # 5. Constant Mix
+# Overlap_tsCM_WtsEnd   <- tsCM* 0 # for i-th month
+# 
+# ## Storage for Monthly % cost p/Portfolio
+# #1. Equal 
+# Overlap_tsE_TOver <- tsGRet[,1]*0 
+# #2. SR 
+# Overlap_tsSR_TOver <- tsGRet[,1]*0 
+# #3. BH 
+# Overlap_tsBH_TOver <- tsGRet[,1]*0 
+# #4. HRP 
+# Overlap_tsHRP_TOver <- tsGRet[,1]*0 
+# #5. CM 
+# Overlap_tsCM_TOver <- tsCM[,1]*0 
+# 
+# ## Storage for adjusted ports realised returns for trading costs
+# # 1. EW
+# Overlap_tsE_adj   <- tsGRet[,1]*0 
+# # 2. 
+# Overlap_tsSR_adj  <- tsGRet[,1]*0 
+# # 3. BH
+# Overlap_tsBH_adj  <- tsGRet[,1]*0 
+# # 4. HRP
+# Overlap_tsHRP_adj   <- tsGRet[,1]*0 
+# # 5. Constant Mix
+# Overlap_tsCM_adj <- tsCM[,1]*0 
+# 
+# # loop deals with a single month at a time starting with month (Window)
+# for (i in Window:(tot[1]-1)){
+#         
+#         #### End of Month Weights for all ports
+#         #1.  Equal
+#         Overlap_tsE_WtsEnd[i,] <- (tsGRet[i,]*EWts)+EWts
+#         #2. SR
+#         Overlap_tsSR_WtsEnd[i,] <- (tsGRet[i,]*Overlap_tsWts[i,])+Overlap_tsWts[i,]
+#         # 3. BH 
+#         # Overlap_tsBH_WtsEnd
+#         #4. HRP
+#         Overlap_tsHRP_WtsEnd[i,] <- (tsGRet[i,]*Overlap_HRP_Wts[i,])+Overlap_HRP_Wts[i,]
+#         #5. Constant Mix
+#         Overlap_tsCM_WtsEnd[i,] <- (tsCM[i,]*CMWts)+CMWts
+#         
+#         ######## P Turnover per month ## ISSUE LIES HERE
+#         #1. Equal 
+#         Overlap_tsE_TOver[i] <- apply(abs(Overlap_tsE_WtsEnd - EWts),1,sum)
+#         #2. SR
+#         Overlap_tsSR_TOver[i] <- apply(abs(Overlap_tsSR_WtsEnd - Overlap_tsWts),1,sum)
+#         #3. BH
+#         Overlap_tsBH_TOver[i] <- apply(abs(Overlap_tsBH_WtsEnd - Overlap_tsBH_Wts0),1,sum)
+#         #4. HRP
+#         Overlap_tsHRP_TOver[i] <- apply(abs(Overlap_tsHRP_WtsEnd - Overlap_HRP_Wts),1,sum)
+#         #5. CM
+#         Overlap_tsCM_TOver[i] <- apply(abs(Overlap_tsCM_WtsEnd-CMWts),1,sum)
+#         
+#         
+#         # #### Percentage cost of rebalancing using 35 basis points p/mnth
+#         #1.  Equal
+#         Overlap_tsE_cost[i] <- 0.0035* Overlap_tsE_TOver[i]
+#         #2. SR
+#         Overlap_tsSR_cost[i] <- 0.0035* Overlap_tsSR_TOver[i]
+#         # 3. BH
+#         Overlap_tsBH_cost[i] <- 0.0035* Overlap_tsBH_TOver[i]
+#         #4. HRP
+#         Overlap_tsHRP_cost[i] <- 0.0035* Overlap_tsE_TOver[i]
+#         #5. Constant Mix
+#         Overlap_tsCM_cost[i] <- 0.0035* Overlap_tsCM_TOver[i]
+# 
+#         ####### Adjusting returns p/mnth
+#         #1. Equally weighted realised returns
+#         Overlap_tsE_adj[i] <- Overlap_tsERet[i] - Overlap_tsE_cost[i]
+#         
+#         #2 SR realised returns
+#         Overlap_tsSR_adj[i]  <- Overlap_tsPRet[i] - Overlap_tsSR_cost[i]
+#         
+#         #3. BH realised returns
+#         ## Realised Port returns (Sum across all assets) 
+#         Overlap_tsBH_adj[i] <- Overlap_tsBHRet[i] - Overlap_tsBH_cost[i]
+#         
+#         #4. HRP realised returns
+#         Overlap_tsHRP_adj[i] <- Overlap_HRP_PRet[i] - Overlap_tsHRP_cost[i]
+#         
+#         #5. CM realised returns
+#         Overlap_tsCM_adj[i] <- Overlap_tsCMRet[i] - Overlap_tsCM_cost[i]
+# }
+# 
+# 
+# ##### Plot Overlap Adjusted for Turnover Costs
+# 
+# #Compute the wealth index
+# O_adj_tsIndx <- cbind(colCumprods(exp(Overlap_tsE_adj)),colCumprods(exp(Overlap_tsSR_adj)))
+# O_adj_tsIndx <- merge(O_adj_tsIndx,colCumprods(exp(Overlap_tsBH_adj)))
+# O_adj_tsIndx <- merge(O_adj_tsIndx,colCumprods(exp(Overlap_tsHRP_adj)))
+# O_adj_tsIndx <- merge(O_adj_tsIndx,colCumprods(exp(Overlap_tsCM_adj)))
+# # remove zeros from the first half
+# O_adj_tsIndx <- O_adj_tsIndx[Window:i,]
+# # Add ALSI
+# O_adj_tsALL <- merge(O_adj_tsIndx,colCumprods(exp(tsALSI)))
+# # Add ALBI
+# O_adj_tsALL <- merge(O_adj_tsALL,colCumprods(exp(tsBonds)))
+# # print header
+# head(O_adj_tsALL)
+# 
+# ## Visualise the Equity Curves
+# # plot the merge indices
+# plot(O_adj_tsALL,plot.type = "s", col = c("orange", "magenta", "blue", "green", "purple","red", "lightblue") ,at = "chic", format = "%Y %b", ylim = c(1,5), xlab = "Time", ylab = "Index")
+# abline(v = as.POSIXct("2009-02-28"))
+# abline(v = as.POSIXct("2014-01-31"))
+# abline(v = as.POSIXct("2015-07-31"))
+# # title
+# title(main = "Overlapping Rolling Window Equity Curve")
+# # legend
+# # EQW, SR, BH, HRP, CM
+# legend("topleft",names(O_adj_tsALL),col = c("orange","magenta","blue","green", "purple","red", "lightblue"), lwd = 2, lty = c('solid', 'solid', 'solid', 'solid', 'solid','solid','solid'), bty = "o")
+# 
+# 
+# ############################################################################### 
