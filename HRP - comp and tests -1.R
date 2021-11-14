@@ -1,19 +1,22 @@
 # Attempt HRP algorithm and checks 
-# 18/06/2021
+# Last edited: 14/11/2021
 # Author: Nina Matthews
-# Project: Honours Thesis: Cluster Analysis for Portfolio Construction
+# Project:Comparing the Hierarchical Risk Parity Algorithm and Mean-Variance Portfolio Selection
 # Partner: Siphesihle Cele
-# Ref Source: 
-# Kipnis: https://quantstrattrader.com/2017/05/22/the-marcos-lopez-de-prado-hierarchical-risk-parity-algorithm/
+# Data source - Kipnis: https://quantstrattrader.com/2017/05/22/the-marcos-lopez-de-prado-hierarchical-risk-parity-algorithm/
 
 
 ### Note:
 # We intend to work with Marcos Lopaz de Prado's 2015 work on HRP, hence
 # we will stay as close as possible to his coding conventions such as variable and function names.
+
 rm(list=ls())
 library(StatMatch)
 library(reshape2)
 library(ggplot2)
+library(seriation)
+library(RColorBrewer)
+library(graphics)
 
 ###################################################################
 ################### HRP Algorithm  ###############################
@@ -77,31 +80,11 @@ getQuasiDiag <- function(link){
 
 ######## STAGE 3: Recursive Bisection #############
 # Functions:
-# 3.1 getIVP (3)
-# 3.2 getClusterVar  (2)
-# 3.3 getRecBipart (1)
-# Extra to put into getRecBipart
+# 3.1 getRecBipart 
+# 3.2 recCall
+# 3.3 getClusterVar  
+# 3.4 getIVP 
 
-# Process Notes
-# 
-
-### Inverse Variance Portfolio (IVP)
-
-getIVP <- function(cov) {
-        # inv-var weights
-        invDiag <- 1/diag(as.matrix(cov))
-        w <- invDiag/sum(invDiag)
-        return(w)
-}
-
-getClusterVar <- function(cov, cItems) {
-        # compute cluster var per clsuter
-        covSlice <- cov[cItems, cItems]
-        # get weights from IVP for calculation: wVw
-        w <- getIVP(covSlice)
-        cVar <- t(w) %*% as.matrix(covSlice) %*% w
-        return(cVar)
-}
 
 getRecBipart <- function(cov, sortIx) {
         assign("w", value = rep(1, ncol(cov)), envir = .GlobalEnv)
@@ -114,10 +97,10 @@ getRecBipart <- function(cov, sortIx) {
 recCall <- function(cov, sortIx) {
         ###### Cluster Split ############################
         # get index values for the slip, truncate to insure ints
-        subIdx <- 1:trunc(length(sortIx)/2)
+        Idx_split <- (1:trunc(length(sortIx)/2))
         # use index vals to split ordered list
-        cItems0 <- sortIx[subIdx]
-        cItems1 <- sortIx[-subIdx]
+        cItems0 <- sortIx[Idx_split]
+        cItems1 <- sortIx[-Idx_split]
         
         ######## ClusterVar call ##########################
         # Call ClusterVar for subcluster varaince on each half
@@ -143,6 +126,26 @@ recCall <- function(cov, sortIx) {
         }
 }
 
+### (Sub) Cluster Variance 
+
+getClusterVar <- function(cov, cItems) {
+        # Slices diag covar matrix for assets under each subclust
+        diag_slice <- cov[cItems, cItems]
+        # get weights from IVP for calculation: wVw
+        w <- getIVP(diag_slice)
+        cVar <- t(w) %*% as.matrix(diag_slice) %*% w
+        return(cVar)
+}
+
+### Inverse Variance Portfolio (IVP)
+getIVP <- function(slice) {
+        # inv-var weights
+        inv_diag <- 1/diag(as.matrix(slice))
+        # For division of trace: sum diag
+        w <- inv_diag/sum(inv_diag)
+        return(w)
+}
+
 ###################################################################
 ##### CHECK 1: ####### 3 x 3 cor matrix used by MLdP ############
 ###################################################################
@@ -161,7 +164,7 @@ dist2 <- Euc_dist(dist1)
 link <- cluster_fn(dist = dist2)
 order <- link$order
 
-plot(as.dendrogram(link))
+plot(as.dendrogram(link),main = "Example Hierarchical Dendrogram", ylab = "Cluster Leaves Distances", xlab = "Assets")
 
 # Cluster order
 sortIx <- getQuasiDiag(link)
@@ -173,28 +176,30 @@ sortIx <- getQuasiDiag(link)
 ##### CHECK 2: Full data from Lopez ############
 ###################################################################
 
-Lopezdata <- read.csv("x_output.csv")
-
-corLop <- round(cor(Lopezdata, method = "pearson"),9)
+### Correlation from Lopez gen
+Lopezdata.cor <- as.matrix(read.csv("x_output.csv"))
+Lopezdata.cor <- Lopezdata.cor[,-1]
+rownames(Lopezdata.cor) <- c("Asset 1","Asset 2", "Asset 3", "Asset 4","Asset 5","Asset 6","Asset 7","Asset 8","Asset 9","Asset 10" )
+colnames(Lopezdata.cor) <-  c("Asset 1","Asset 2", "Asset 3", "Asset 4","Asset 5","Asset 6","Asset 7","Asset 8","Asset 9","Asset 10" )
 
 #### HEAT PLOT Check:
-
-
-corLop_melted <- melt(corLop)
+corLop_melted <- melt(Lopezdata.cor)
 
 
 ggplot(data = corLop_melted, aes(x=Var1, y=Var2, fill=value)) + 
         geom_tile()+
         theme(axis.title.x = element_blank(),
-              axis.title.y = element_blank())
+              axis.title.y = element_blank()) +
+        theme(axis.text.x  = element_text(angle=90, vjust=0.5, size=10))
 
 ###################################################################
 ##### CHECK 3: Full data from Lopez (retrieved by Kipnis) ############
 ###################################################################
 
+# Correct
 cor <- as.matrix(read.csv("corMat.csv"))
-rownames(cor) <- c("V1","V2", "V3", "V4","V5","V6","V7","V8","V9","V10" )
-colnames(cor) <-  c("V1","V2", "V3", "V4","V5","V6","V7","V8","V9","V10" )
+rownames(cor) <- c("Asset 1","Asset 2", "Asset 3", "Asset 4","Asset 5","Asset 6","Asset 7","Asset 8","Asset 9","Asset 10" )
+colnames(cor) <-  c("Asset 1","Asset 2", "Asset 3", "Asset 4","Asset 5","Asset 6","Asset 7","Asset 8","Asset 9","Asset 10" )
 
 # HEAT PLOT Correlation
 
@@ -202,22 +207,24 @@ cor_melted <- melt(cor)
 
 
 ggplot(data = cor_melted, aes(x=Var1, y=Var2, fill=value)) + 
-        geom_tile()
+        geom_tile() + theme(axis.title.x = element_blank(),
+                            axis.title.y = element_blank()) +
+        theme(axis.text.x  = element_text(angle=90, vjust=0.5, size=10))
 
 
 
 cov <- as.matrix(read.csv("covMat.csv"))
-rownames(cov) <- c("V1","V2", "V3", "V4","V5","V6","V7","V8","V9","V10" )
-colnames(cov) <-  c("V1","V2", "V3", "V4","V5","V6","V7","V8","V9","V10" )
-
+rownames(cov) <- c("Asset 1","Asset 2", "Asset 3", "Asset 4","Asset 5","Asset 6","Asset 7","Asset 8","Asset 9","Asset 10" )
+colnames(cov) <-  c("Asset 1","Asset 2", "Asset 3", "Asset 4","Asset 5","Asset 6","Asset 7","Asset 8","Asset 9","Asset 10" )
 # HEAT PLOT Covariance
 cov_melted <- melt(cov)
 
 
-ggplot(data = cov_melted, aes(x=Var1, y=Var2, fill=value)) + 
+ggplot(data = cov_melted, aes(x=Var1, y=Var2, fill=value)) +
         geom_tile()+
         theme(axis.title.x = element_blank(),
-                axis.title.y = element_blank())
+              axis.title.y = element_blank()) +
+        theme(axis.text.x  = element_text(angle=90, vjust=0.5, size=10))
 
 ### Checking clustering with Lopez data: #####
 
@@ -231,7 +238,8 @@ dist2Lop <- Euc_dist(dist1Lop)
 linkLop <- cluster_fn(dist = dist2Lop)
 sortIx <- linkLop$order
 
-plot(as.dendrogram(linkLop))
+plot(as.dendrogram(linkLop), main = "Hierarchical Clustering Dendrogram", ylab = "Cluster Leaves Distances", xlab = "Assets")
+
 
 # Cluster order
 sortIx <- getQuasiDiag(linkLop)
@@ -242,18 +250,12 @@ sortIx <- getQuasiDiag(linkLop)
 #  9  2 10  1  7  3  6  4  5  8
 
 # Diag Matrix
-library(seriation)
 
-library(RColorBrewer)
-coul <- colorRampPalette(brewer.pal(8, "Spectral"))(10000)
+coul <- colorRampPalette(brewer.pal(8, "Spectral"))(100000)
+# need to supply the cor matrix as HRP uses cor dist for clustering
 diag <- hmap(cor, method = "HC_single", col = coul) 
 
 ######## STAGE 3: Recursive Bisection #############
 
 outTest <- getRecBipart(cov, sortIx)
-
-###################################################################
-#               ########### END  ############
-###################################################################
-
 
