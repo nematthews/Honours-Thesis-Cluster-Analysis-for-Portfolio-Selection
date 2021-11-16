@@ -18,11 +18,14 @@ Dataset 1:  PT-TAA.RData
 
 Cleaning of Dataset 2:
 Main File: Dataset2ETFDataWrangling.r
+
 Requires:
 - ETF-DATA-2001-2021.xlsx
 
 ## 4. Data Science and function validation:
 Main File: HRP - comp and tests -1.R 
+
+Requires:
 - x_output.csv
 - Lopez_data.csv
 - corMat.csv
@@ -30,17 +33,20 @@ Main File: HRP - comp and tests -1.R
 
 ## 5. Compatibility: Algorithms and the Data Section:
 Main File: HRP implemented for ETF data.R
+
 Requires: 
 - DataPostCov2.xlsx
 
 ## 6. Dynamic Backtest Section:
 Main File: All_Ports_Rolling_Windows.R 
+
 Requires: 
 - HRP Fn.R
 - PT-TAA.RData
 
 ## 7.  Static Backtest Section:
 Main File: IS_SR vs OS_SR.R
+
 Requires:
 - PT-TAA.RData
 
